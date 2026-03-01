@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  tenant-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: tenant-service
+    ports:
+      - "8125:8120"  # Puerto externo 8125 (8120 ya usado por order-service)
+    environment:
+      - DB_HOST=tenant-db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=tenant_db
+      - PORT=8120
+      - PROMETHEUS_ENABLED=true
+      - GIN_MODE=debug
+    volumes:
+      - .:/app
+      - /app/tmp
+    depends_on:
+      tenant-db:
+        condition: service_healthy
+    networks:
+      - tenant-network
+    restart: unless-stopped
+
+  tenant-db:
+    image: postgres:15-alpine
+    container_name: tenant-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tenant_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - tenant-db-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tenant-network
+    restart: unless-stopped
+
+volumes:
+  tenant-db-data:
+    driver: local
+
+networks:
+  tenant-network:
+    driver: bridge

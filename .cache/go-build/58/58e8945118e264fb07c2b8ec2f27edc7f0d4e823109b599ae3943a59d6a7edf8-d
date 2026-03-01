@@ -1,0 +1,2 @@
+./bootstrap_tenant_config_command.go
+./set_tenant_config_command.go

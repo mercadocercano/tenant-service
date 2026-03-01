@@ -1,0 +1,65 @@
+# Kong Gateway Configuration for Tenant Service
+# Este archivo debe integrarse en el kong.yml principal del API Gateway
+
+_format_version: "3.0"
+
+services:
+  - name: tenant-service
+    url: http://tenant-service:8120
+    protocol: http
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    routes:
+      - name: tenant-config-route
+        paths:
+          - /tenant
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        protocols:
+          - http
+          - https
+    plugins:
+      # JWT Authentication (heredado del gateway)
+      - name: jwt
+        enabled: true
+      
+      # Rate Limiting
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      
+      # CORS
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - X-Tenant-ID
+          exposed_headers:
+            - X-Total-Count
+          credentials: true
+          max_age: 3600
+      
+      # Request Transformer (asegurar headers)
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - X-Service-Name:tenant-service
