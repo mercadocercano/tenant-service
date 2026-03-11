@@ -11,8 +11,9 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy dependency files and download modules
+# Copy dependency files and local libs, then download modules
 COPY go.mod go.sum ./
+COPY libs/eventbus ./libs/eventbus
 RUN go mod download && go mod verify
 
 # ==============================================

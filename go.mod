@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-replace github.com/mercadocercano/eventbus => ../../libs/eventbus
+replace github.com/mercadocercano/eventbus => ./libs/eventbus
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
