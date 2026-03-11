@@ -2,7 +2,7 @@
 
 ## 🏛️ Visión General
 
-El **Tenant Service** es el microservicio responsable de gestionar las configuraciones específicas de cada tenant en el sistema SaaS Multi-Tenant "Tienda Vecina". Actúa como el **"cerebro del tenant"**, siendo la única fuente de verdad (Source of Truth) para todas las configuraciones relacionadas con políticas de negocio, integraciones, y preferencias.
+El **Tenant Service** es el microservicio responsable de gestionar las configuraciones específicas de cada tenant en el sistema SaaS Multi-Tenant "Mercado Cercano". Actúa como el **"cerebro del tenant"**, siendo la única fuente de verdad (Source of Truth) para todas las configuraciones relacionadas con políticas de negocio, integraciones, y preferencias.
 
 ## 🎯 Principios de Diseño
 
@@ -291,4 +291,4 @@ Al contribuir a este servicio, asegúrate de:
 
 **Última actualización**: 2026-02-03  
 **Versión**: 1.0.0  
-**Autor**: SaaS MT Team - Tienda Vecina
+**Autor**: SaaS MT Team - Mercado Cercano

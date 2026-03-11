@@ -138,7 +138,7 @@ Ninguno reportado en v1.0.0
 
 ### 🙏 Agradecimientos
 
-- Equipo SaaS MT - Tienda Vecina
+- Equipo SaaS MT - Mercado Cercano
 - Inspiración en Clean Architecture (Robert C. Martin)
 - Hexagonal Architecture (Alistair Cockburn)
 - Domain-Driven Design (Eric Evans)

@@ -1,0 +1,15 @@
+# ==============================================
+# Tenant Service - Dev desde raíz (eventbus en libs/)
+# Requiere: context: . y volumes: - ./libs/eventbus:/libs/eventbus
+# ==============================================
+FROM golang:1.22-alpine
+RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
+RUN go install github.com/cosmtrek/air@v1.49.0
+WORKDIR /app
+RUN addgroup -g 1001 -S appgroup && adduser -S -D -h /app -s /bin/sh -G appgroup -u 1001 appuser
+# Dev: run as root para que go mod cache funcione con volumen nombrado
+USER root
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8120/health || exit 1
+EXPOSE 8120
+CMD ["air", "-c", ".air.toml"]

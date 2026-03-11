@@ -41,3 +41,6 @@ logs/
 
 # Air
 build-errors.log
+
+# Go build cache
+.cache/
