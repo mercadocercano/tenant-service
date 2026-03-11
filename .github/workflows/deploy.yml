@@ -29,7 +29,7 @@ jobs:
           username: ${{ secrets.DOCR_TOKEN }}
           password: ${{ secrets.DOCR_TOKEN }}
 
-      - name: Build and Push Image (linux/amd64)
+      - name: Build Image
         run: |
           docker buildx build \
             --platform linux/amd64 \
@@ -38,8 +38,13 @@ jobs:
             --sbom=false \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --push \
+            --load \
             .
+
+      - name: Push Image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Set up SSH key
         run: |
