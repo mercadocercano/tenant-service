@@ -64,6 +64,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
             "export KUBECONFIG=/home/deploy/.kube/config && \
+             kubectl patch deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --type='merge' \
+               -p '{\"spec\":{\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":0,\"maxUnavailable\":1}}}}' && \
              kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
                ${{ env.CONTAINER_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
                -n ${{ env.NAMESPACE }}"
