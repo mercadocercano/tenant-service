@@ -5,15 +5,19 @@
 # ==============================================
 # Stage 1: Dependencies and cache optimization
 # ==============================================
-FROM golang:1.22-alpine AS deps
+FROM golang:1.24-alpine AS deps
 WORKDIR /app
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy dependency files and local libs, then download modules
+# Configure private Go modules
+ARG GITHUB_TOKEN
+ENV GOPRIVATE=github.com/mercadocercano/*
+RUN if [ -n "$GITHUB_TOKEN" ]; then git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; fi
+
+# Copy dependency files and download modules
 COPY go.mod go.sum ./
-COPY libs/eventbus ./libs/eventbus
 RUN go mod download && go mod verify
 
 # ==============================================
@@ -34,7 +38,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # ==============================================
 # Stage 3: Development stage (with Air hot reload)
 # ==============================================
-FROM golang:1.22-alpine AS development
+FROM golang:1.24-alpine AS development
 
 # Security: Create non-root user first
 RUN addgroup -g 1001 -S appgroup && \
@@ -56,6 +60,11 @@ RUN go install github.com/cosmtrek/air@v1.49.0
 
 WORKDIR /app
 
+# Configure private Go modules
+ARG GITHUB_TOKEN
+ENV GOPRIVATE=github.com/mercadocercano/*
+RUN if [ -n "$GITHUB_TOKEN" ]; then git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; fi
+
 # Copy go mod files first (for better caching)
 COPY --chown=appuser:appgroup go.mod go.sum ./
 RUN go mod download
@@ -63,9 +72,10 @@ RUN go mod download
 # Copy source code
 COPY --chown=appuser:appgroup . .
 
-# Create tmp directory for Air
-RUN mkdir -p tmp scripts migrations logs && \
-    chown -R appuser:appgroup tmp scripts migrations logs
+# Create directories and fix permissions for Air + Go mod cache
+RUN mkdir -p tmp scripts migrations logs /go/pkg/mod && \
+    chmod -R 777 /go/pkg && \
+    chown -R appuser:appgroup /app tmp scripts migrations logs
 
 # Switch to non-root user
 USER appuser
@@ -77,8 +87,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose ports
 EXPOSE 8120
 
-# Use Air for hot reload in development
-CMD ["air", "-c", ".air.toml"]
+CMD sh -c 'if [ -n "$GITHUB_TOKEN" ]; then git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; fi && air -c .air.toml'
 
 # ==============================================
 # Stage 4: Production stage (Distroless)
