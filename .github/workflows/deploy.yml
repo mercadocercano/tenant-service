@@ -29,22 +29,20 @@ jobs:
           username: ${{ secrets.DOCR_TOKEN }}
           password: ${{ secrets.DOCR_TOKEN }}
 
-      - name: Build Image
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --target production \
-            --provenance=false \
-            --sbom=false \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --load \
-            .
-
-      - name: Push Image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          target: production
+          provenance: false
+          sbom: false
+          build-args: |
+            GITHUB_TOKEN=${{ secrets.GO_PRIVATE_TOKEN }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Set up SSH key
         run: |
