@@ -62,23 +62,17 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
             "export KUBECONFIG=/home/deploy/.kube/config && \
-             kubectl patch deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --type='merge' \
-               -p '{\"spec\":{\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":0,\"maxUnavailable\":1}}}}' && \
              kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
                ${{ env.CONTAINER_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-               -n ${{ env.NAMESPACE }}"
-          if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
-            "export KUBECONFIG=/home/deploy/.kube/config && \
+               -n ${{ env.NAMESPACE }} && \
              kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
-               -n ${{ env.NAMESPACE }} --timeout=180s"; then
-            echo "⚠️ Rollout status timed out; continuing to Verify Pod Ready."
-          fi
+               -n ${{ env.NAMESPACE }} --timeout=300s"
 
       - name: Verify Pod Ready
         run: |
           EXPECTED="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          for ATTEMPT in $(seq 1 30); do
-            echo "Attempt $ATTEMPT/30..."
+          for ATTEMPT in 1 2 3 4 5 6 7 8 9; do
+            echo "Attempt $ATTEMPT/9..."
             POD_LINE=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
               "export KUBECONFIG=/home/deploy/.kube/config && \
                kubectl get pods -l app=${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} \
@@ -90,7 +84,7 @@ jobs:
             fi
             sleep 10
           done
-          echo "❌ Pod not ready with image ${EXPECTED} after 300s"
+          echo "❌ Pod not ready with image ${EXPECTED} after 90s"
           exit 1
 
       - name: Cleanup old registry tags
