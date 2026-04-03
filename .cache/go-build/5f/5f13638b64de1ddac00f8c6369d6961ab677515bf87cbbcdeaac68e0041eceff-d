@@ -1,4 +1,0 @@
-./bootstrap_tenant_config_command.go
-./create_point_of_sale_command.go
-./set_tenant_config_command.go
-./update_tenant_settings_command.go

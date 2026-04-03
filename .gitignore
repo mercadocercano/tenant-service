@@ -44,3 +44,11 @@ build-errors.log
 
 # Go build cache
 .cache/
+
+# Build artifacts
+tmp/
+.cache/
+.config/
+.gitconfig
+*-management/
+.cursorrules

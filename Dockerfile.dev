@@ -2,7 +2,7 @@
 # Tenant Service - Dev desde raíz (eventbus en libs/)
 # Requiere: context: . y volumes: - ./libs/eventbus:/libs/eventbus
 # ==============================================
-FROM golang:1.22-alpine
+FROM golang:1.24-alpine
 RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
 RUN go install github.com/cosmtrek/air@v1.49.0
 WORKDIR /app
