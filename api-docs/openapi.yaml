@@ -1,0 +1,527 @@
+openapi: 3.1.0
+info:
+  title: Tenant Service API
+  description: Servicio de configuracion multi-tenant para Mercado Cercano. Gestiona configuraciones clave-valor, settings estructurados (monetarios, fiscales, stock, credito) y puntos de venta.
+  version: 1.0.0
+  contact:
+    name: Mercado Cercano
+servers:
+  - url: http://localhost:8001/tenant/api/v1
+    description: Kong Gateway (desarrollo local)
+  - url: http://localhost:8125/api/v1
+    description: Directo al servicio (solo debug)
+
+security:
+  - BearerAuth: []
+
+paths:
+  /tenant/config/{key}:
+    get:
+      operationId: getTenantConfig
+      summary: Obtener configuracion por clave
+      description: Obtiene el valor de una configuracion especifica del tenant (clave-valor simple).
+      tags:
+        - tenant-config
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+        - name: key
+          in: path
+          required: true
+          description: Clave de configuracion (ej. catalog.stock_policy)
+          schema:
+            type: string
+            example: "catalog.stock_policy"
+      responses:
+        "200":
+          description: Configuracion encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleConfigResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          description: Configuracion no encontrada (value sera null)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleConfigResponse'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/config:
+    post:
+      operationId: setTenantConfig
+      summary: Establecer configuracion
+      description: Crea o actualiza una configuracion del tenant (upsert clave-valor).
+      tags:
+        - tenant-config
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTenantConfigRequest'
+      responses:
+        "200":
+          description: Configuracion guardada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantConfigResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/bootstrap:
+    post:
+      operationId: bootstrapTenantConfig
+      summary: Bootstrap de configuracion del tenant
+      description: Crea configuraciones por defecto para un tenant nuevo. Es idempotente, puede ejecutarse multiples veces sin efecto duplicado.
+      tags:
+        - tenant-config
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+      responses:
+        "200":
+          description: Bootstrap completado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/settings:
+    get:
+      operationId: getTenantSettings
+      summary: Obtener settings del tenant
+      description: Obtiene todas las configuraciones estructuradas del tenant (monetarias, fiscales, stock, credito).
+      tags:
+        - tenant-settings
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+      responses:
+        "200":
+          description: Settings del tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSettingsResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          description: Settings no encontrados. Se debe ejecutar bootstrap primero.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      operationId: updateTenantSettings
+      summary: Actualizar settings del tenant
+      description: Actualiza la configuracion estructurada del tenant con optimistic locking (version control). Si la version no coincide, retorna 409 Conflict.
+      tags:
+        - tenant-settings
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantSettingsRequest'
+      responses:
+        "200":
+          description: Settings actualizados exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSettingsResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "409":
+          description: Conflicto de version. Los settings fueron modificados por otro proceso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Version conflict"
+                  message:
+                    type: string
+                    example: "The settings were modified by another process. Please refresh and try again."
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/points-of-sale:
+    get:
+      operationId: listPointsOfSale
+      summary: Listar puntos de venta
+      description: Lista todos los puntos de venta del tenant. Opcionalmente filtra solo los activos.
+      tags:
+        - points-of-sale
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+        - name: only_active
+          in: query
+          description: Filtrar solo puntos de venta activos
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Lista de puntos de venta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListPointsOfSaleResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createPointOfSale
+      summary: Crear punto de venta
+      description: Crea un nuevo punto de venta para el tenant.
+      tags:
+        - points-of-sale
+      parameters:
+        - $ref: '#/components/parameters/XTenantID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePointOfSaleRequest'
+      responses:
+        "201":
+          description: Punto de venta creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PointOfSaleResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    XTenantID:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      description: UUID del tenant
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    # --- Tenant Config (clave-valor) ---
+
+    SetTenantConfigRequest:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+          description: Clave de configuracion
+          example: "catalog.stock_policy"
+        value:
+          type: string
+          description: Valor de la configuracion
+          example: "IGNORE"
+
+    SimpleConfigResponse:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+          nullable: true
+          description: "null si la configuracion no existe"
+
+    TenantConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        value:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BootstrapResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: "Tenant configuration bootstrapped successfully"
+        tenant_id:
+          type: string
+          format: uuid
+        configs_created:
+          type: integer
+          description: Cantidad de configuraciones creadas (0 si ya existian)
+
+    # --- Tenant Settings (estructurado) ---
+
+    UpdateTenantSettingsRequest:
+      type: object
+      required:
+        - version
+        - base_currency
+        - allowed_currencies
+        - exchange_rate_source
+        - fiscal_mode
+        - invoice_generation
+        - default_invoice_type
+        - tax_regime
+        - stock_policy
+        - default_credit_days
+        - max_credit_limit
+        - cash_customer_id
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          description: Version actual para optimistic locking
+        base_currency:
+          type: string
+          example: "ARS"
+        allowed_currencies:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          example: ["ARS", "USD"]
+        exchange_rate_source:
+          type: string
+          enum: ["MANUAL", "EXTERNAL_API"]
+        auto_update_exchange_rate:
+          type: boolean
+          default: false
+        fiscal_mode:
+          type: string
+          enum: ["DISABLED", "OPTIONAL", "REQUIRED"]
+        invoice_generation:
+          type: string
+          enum: ["MANUAL", "AUTO_ON_SALE", "AUTO_ON_CONFIRM"]
+        allow_sale_if_afip_fails:
+          type: boolean
+          default: true
+        auto_retry_failed_invoices:
+          type: boolean
+          default: false
+        email_invoice_after_success:
+          type: boolean
+          default: false
+        default_invoice_type:
+          type: string
+          example: "B"
+        tax_regime:
+          type: string
+          enum: ["MONOTRIBUTO", "RESPONSABLE_INSCRIPTO"]
+        stock_policy:
+          type: string
+          enum: ["IGNORE", "RESERVE", "DEDUCT"]
+        allow_negative_stock:
+          type: boolean
+          default: true
+        require_stock_validation_before_sale:
+          type: boolean
+          default: false
+        credit_enabled:
+          type: boolean
+          default: false
+        default_credit_days:
+          type: integer
+          minimum: 0
+          default: 30
+        max_credit_limit:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+        allow_sale_over_credit_limit:
+          type: boolean
+          default: false
+        cash_customer_id:
+          type: string
+          format: uuid
+          description: UUID del cliente contado (Consumidor Final)
+
+    TenantSettingsResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+        base_currency:
+          type: string
+        allowed_currencies:
+          type: array
+          items:
+            type: string
+        exchange_rate_source:
+          type: string
+        auto_update_exchange_rate:
+          type: boolean
+        fiscal_mode:
+          type: string
+        invoice_generation:
+          type: string
+        allow_sale_if_afip_fails:
+          type: boolean
+        auto_retry_failed_invoices:
+          type: boolean
+        email_invoice_after_success:
+          type: boolean
+        default_invoice_type:
+          type: string
+        tax_regime:
+          type: string
+        stock_policy:
+          type: string
+        allow_negative_stock:
+          type: boolean
+        require_stock_validation_before_sale:
+          type: boolean
+        credit_enabled:
+          type: boolean
+        default_credit_days:
+          type: integer
+        max_credit_limit:
+          type: number
+          format: double
+        allow_sale_over_credit_limit:
+          type: boolean
+        cash_customer_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+
+    # --- Points of Sale ---
+
+    CreatePointOfSaleRequest:
+      type: object
+      required:
+        - code
+        - description
+        - default_invoice_type
+      properties:
+        code:
+          type: integer
+          minimum: 1
+          description: Codigo numerico del punto de venta
+          example: 1
+        description:
+          type: string
+          description: Descripcion del punto de venta
+          example: "Caja principal"
+        is_fiscal_enabled:
+          type: boolean
+          default: false
+        default_invoice_type:
+          type: string
+          description: Tipo de factura por defecto
+          example: "B"
+
+    PointOfSaleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        code:
+          type: integer
+        description:
+          type: string
+        is_fiscal_enabled:
+          type: boolean
+        default_invoice_type:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+
+    ListPointsOfSaleResponse:
+      type: object
+      properties:
+        points_of_sale:
+          type: array
+          items:
+            $ref: '#/components/schemas/PointOfSaleResponse'
+        total_count:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Request invalido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
