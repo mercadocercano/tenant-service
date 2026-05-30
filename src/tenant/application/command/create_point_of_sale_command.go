@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"tenant/src/tenant/domain/entity"
 	"tenant/src/tenant/domain/repository"
@@ -11,13 +12,15 @@ import (
 
 // CreatePointOfSaleCommand representa el caso de uso para crear un punto de venta
 type CreatePointOfSaleCommand struct {
-	repository repository.PointOfSaleRepository
+	repository     repository.PointOfSaleRepository
+	eventPublisher EventPublisher
 }
 
 // NewCreatePointOfSaleCommand crea una nueva instancia del command
-func NewCreatePointOfSaleCommand(repo repository.PointOfSaleRepository) *CreatePointOfSaleCommand {
+func NewCreatePointOfSaleCommand(repo repository.PointOfSaleRepository, eventPublisher EventPublisher) *CreatePointOfSaleCommand {
 	return &CreatePointOfSaleCommand{
-		repository: repo,
+		repository:     repo,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -49,7 +52,34 @@ func (c *CreatePointOfSaleCommand) Execute(
 
 	log.Printf("[CreatePointOfSale] POS created successfully: %s", pos.ID)
 
-	// TODO: Publicar evento tenant.point_of_sale.created si es necesario
+	// 4. Publicar evento tenant.point_of_sale.created
+	if err := c.publishPOSCreatedEvent(ctx, pos); err != nil {
+		log.Printf("[CreatePointOfSale] WARNING: failed to publish event: %v", err)
+	}
 
 	return pos, nil
+}
+
+func (c *CreatePointOfSaleCommand) publishPOSCreatedEvent(ctx context.Context, pos *entity.PointOfSale) error {
+	payload := map[string]interface{}{
+		"id":                   pos.ID.String(),
+		"tenant_id":            pos.TenantID.String(),
+		"code":                 pos.Code,
+		"description":          pos.Description,
+		"is_fiscal_enabled":    pos.IsFiscalEnabled,
+		"default_invoice_type": pos.DefaultInvoiceType,
+		"is_active":            pos.IsActive,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return c.eventPublisher.Publish(
+		ctx,
+		pos.ID.String(),
+		"point_of_sale",
+		"tenant.point_of_sale.created",
+		payloadBytes,
+		"tenant-service",
+	)
 }

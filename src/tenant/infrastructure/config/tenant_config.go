@@ -52,7 +52,7 @@ func NewExtendedTenantModuleConfig(db *sql.DB, eventPublisher command.EventPubli
 
 	// === POINTS OF SALE (NUEVO) ===
 	posRepo := persistence.NewPostgresPointOfSaleRepository(db)
-	createPOSCommand := command.NewCreatePointOfSaleCommand(posRepo)
+	createPOSCommand := command.NewCreatePointOfSaleCommand(posRepo, eventPublisher)
 	listPOSQuery := query.NewListPointsOfSaleQuery(posRepo)
 	posController := controller.NewPointOfSaleController(createPOSCommand, listPOSQuery)
 

@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func newPOSCmd(repo *MockPointOfSaleRepository) *CreatePointOfSaleCommand {
+	publisher := new(MockEventPublisher)
+	publisher.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	return NewCreatePointOfSaleCommand(repo, publisher)
+}
+
 func TestCreatePointOfSale_Execute_Success(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
@@ -18,7 +24,7 @@ func TestCreatePointOfSale_Execute_Success(t *testing.T) {
 
 	mockRepo.On("Create", ctx, mock.AnythingOfType("*entity.PointOfSale")).Return(nil)
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 1, "Sucursal Centro", true, "B")
@@ -41,7 +47,7 @@ func TestCreatePointOfSale_Execute_ValidationError_ZeroCode(t *testing.T) {
 	tenantID := uuid.New()
 	mockRepo := new(MockPointOfSaleRepository)
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 0, "Sucursal", true, "B")
@@ -59,7 +65,7 @@ func TestCreatePointOfSale_Execute_ValidationError_EmptyDescription(t *testing.T
 	tenantID := uuid.New()
 	mockRepo := new(MockPointOfSaleRepository)
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 1, "", true, "B")
@@ -77,7 +83,7 @@ func TestCreatePointOfSale_Execute_ValidationError_EmptyInvoiceType(t *testing.T
 	tenantID := uuid.New()
 	mockRepo := new(MockPointOfSaleRepository)
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 1, "Sucursal", true, "")
@@ -96,7 +102,7 @@ func TestCreatePointOfSale_Execute_RepositoryError(t *testing.T) {
 
 	mockRepo.On("Create", ctx, mock.AnythingOfType("*entity.PointOfSale")).Return(errors.New("duplicate code"))
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 1, "Sucursal Centro", true, "B")
@@ -115,7 +121,7 @@ func TestCreatePointOfSale_Execute_WithFiscalDisabled(t *testing.T) {
 
 	mockRepo.On("Create", ctx, mock.AnythingOfType("*entity.PointOfSale")).Return(nil)
 
-	cmd := NewCreatePointOfSaleCommand(mockRepo)
+	cmd := newPOSCmd(mockRepo)
 
 	// Act
 	result, err := cmd.Execute(ctx, tenantID, 2, "Sucursal Norte", false, "C")

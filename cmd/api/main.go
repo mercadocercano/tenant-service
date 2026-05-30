@@ -66,7 +66,7 @@ func main() {
 
 	// Crear string de conexión
 	connStr := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
-	log.Printf("Intentando conectar a %s", connStr)
+	log.Printf("Intentando conectar a postgres://%s:***@%s:%s/%s", dbUser, dbHost, dbPort, dbName)
 
 	// Conectar a la base de datos
 	db, err := sql.Open("postgres", connStr)
