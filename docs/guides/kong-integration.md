@@ -1,7 +1,5 @@
 # Guía: Integración con Kong Gateway
 
-> Archivo movido desde `INTEGRATION.md` en la raíz.
-
 ## Ruta registrada
 
 El tenant-service está registrado en Kong con la siguiente configuración (ver `~/Projects/infra/kong/kong.yml`):

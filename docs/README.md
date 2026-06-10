@@ -25,3 +25,7 @@
 
 - [Kong Integration](guides/kong-integration.md) — Rutas registradas, plugins, consumo desde otros servicios
 - [Bootstrap Endpoint](guides/bootstrap-endpoint.md) — Inicialización de tenant, integración con onboarding
+
+## Desarrollo
+
+- [Auditoría](development/audit.md) — Reporte de arquitectura hexagonal y cobertura de tests

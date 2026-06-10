@@ -1,7 +1,5 @@
 # Runbook: Deployment
 
-> Archivo movido desde `DEPLOYMENT.md` en la raíz. Rutas de proyecto actualizadas.
-
 **Frecuencia**: On-demand (al hacer deploy)
 **Duración estimada**: 2-5 minutos
 

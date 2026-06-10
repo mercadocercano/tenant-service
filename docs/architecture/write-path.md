@@ -1,7 +1,5 @@
 # Write Path — Tenant Service
 
-> Archivo movido desde `WRITE_PATH_IMPLEMENTATION.md` en la raíz.
-
 **Versión**: 1.1.0 | **Estado**: Completado
 
 ## Endpoints de escritura

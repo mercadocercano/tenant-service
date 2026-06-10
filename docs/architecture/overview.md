@@ -1,7 +1,5 @@
 # Arquitectura — Tenant Service
 
-> Archivo movido desde `ARCHITECTURE.md` en la raíz. El original queda como referencia histórica.
-
 ## Visión general
 
 El **Tenant Service** gestiona la configuración operativa y fiscal de cada tenant en el ecosistema SaaS multi-tenant Mercado Cercano. Es la única fuente de verdad para políticas de negocio (stock, crédito, fiscalidad) y puntos de venta.

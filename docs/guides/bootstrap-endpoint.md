@@ -1,7 +1,5 @@
 # Guía: Endpoint Bootstrap
 
-> Archivo movido desde `BOOTSTRAP_ENDPOINT.md` en la raíz.
-
 ## Descripción
 
 `POST /api/v1/tenant/bootstrap` inicializa la configuración por defecto de un tenant durante el onboarding.
