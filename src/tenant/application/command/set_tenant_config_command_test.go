@@ -3,8 +3,8 @@ package command
 import (
 	"context"
 	"errors"
-	"testing"
 	"tenant/src/tenant/domain/entity"
+	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

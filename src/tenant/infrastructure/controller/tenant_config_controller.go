@@ -14,9 +14,9 @@ import (
 
 // TenantConfigController maneja las peticiones HTTP para configuraciones
 type TenantConfigController struct {
-	getConfigQuery     *query.GetTenantConfigQuery
-	setConfigCommand   *command.SetTenantConfigCommand
-	bootstrapCommand   *command.BootstrapTenantConfigCommand
+	getConfigQuery   *query.GetTenantConfigQuery
+	setConfigCommand *command.SetTenantConfigCommand
+	bootstrapCommand *command.BootstrapTenantConfigCommand
 }
 
 // NewTenantConfigController crea una nueva instancia del controlador
@@ -211,9 +211,9 @@ func (c *TenantConfigController) BootstrapConfig(ctx *gin.Context) {
 
 	// Siempre responder 200 (idempotente)
 	ctx.JSON(http.StatusOK, gin.H{
-		"success":        true,
-		"message":        "Tenant configuration bootstrapped successfully",
-		"tenant_id":      tenantID.String(),
+		"success":         true,
+		"message":         "Tenant configuration bootstrapped successfully",
+		"tenant_id":       tenantID.String(),
 		"configs_created": createdCount,
 	})
 }

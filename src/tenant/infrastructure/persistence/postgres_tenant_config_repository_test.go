@@ -3,8 +3,8 @@ package persistence
 import (
 	"context"
 	"database/sql"
-	"testing"
 	"tenant/src/tenant/domain/entity"
+	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"

@@ -10,9 +10,9 @@ import (
 
 // TenantModuleConfig contiene las dependencias del módulo tenant
 type TenantModuleConfig struct {
-	ConfigController         *controller.TenantConfigController
-	SettingsController       *controller.TenantSettingsController
-	PointOfSaleController    *controller.PointOfSaleController
+	ConfigController      *controller.TenantConfigController
+	SettingsController    *controller.TenantSettingsController
+	PointOfSaleController *controller.PointOfSaleController
 }
 
 // NewTenantModuleConfig crea e inicializa el módulo tenant (key-value existente)

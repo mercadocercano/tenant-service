@@ -10,15 +10,15 @@ import (
 // PointOfSale representa un punto de venta del tenant
 // Cada tenant puede tener múltiples puntos de venta (sucursales)
 type PointOfSale struct {
-	ID                  uuid.UUID
-	TenantID            uuid.UUID
-	Code                int
-	Description         string
-	IsFiscalEnabled     bool
-	DefaultInvoiceType  string
-	IsActive            bool
-	CreatedAt           time.Time
-	Version             int
+	ID                 uuid.UUID
+	TenantID           uuid.UUID
+	Code               int
+	Description        string
+	IsFiscalEnabled    bool
+	DefaultInvoiceType string
+	IsActive           bool
+	CreatedAt          time.Time
+	Version            int
 }
 
 // NewPointOfSale crea una nueva instancia de punto de venta

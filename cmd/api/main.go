@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
-	sharedConfig "github.com/mercadocercano/go-shared/infrastructure/config"
-	tenantmw "github.com/mercadocercano/middleware"
+	sharedConfig "github.com/hornosg/go-shared/infrastructure/config"
+	tenantmw "github.com/hornosg/go-shared/infrastructure/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mercadocercano/eventbus"

@@ -137,19 +137,19 @@ func (c *UpdateTenantSettingsCommand) publishSettingsUpdatedEvent(
 ) error {
 	// Crear payload con snapshot completo de configuraciones relevantes
 	payload := map[string]interface{}{
-		"version":                       settings.Version,
-		"base_currency":                 settings.BaseCurrency,
-		"allowed_currencies":            settings.AllowedCurrencies,
-		"fiscal_mode":                   settings.FiscalMode,
-		"invoice_generation":            settings.InvoiceGeneration,
-		"stock_policy":                  settings.StockPolicy,
-		"allow_negative_stock":          settings.AllowNegativeStock,
-		"credit_enabled":                settings.CreditEnabled,
-		"max_credit_limit":              settings.MaxCreditLimit,
-		"default_credit_days":           settings.DefaultCreditDays,
-		"cash_customer_id":              settings.CashCustomerID.String(),
-		"tax_regime":                    settings.TaxRegime,
-		"exchange_rate_source":          settings.ExchangeRateSource,
+		"version":                              settings.Version,
+		"base_currency":                        settings.BaseCurrency,
+		"allowed_currencies":                   settings.AllowedCurrencies,
+		"fiscal_mode":                          settings.FiscalMode,
+		"invoice_generation":                   settings.InvoiceGeneration,
+		"stock_policy":                         settings.StockPolicy,
+		"allow_negative_stock":                 settings.AllowNegativeStock,
+		"credit_enabled":                       settings.CreditEnabled,
+		"max_credit_limit":                     settings.MaxCreditLimit,
+		"default_credit_days":                  settings.DefaultCreditDays,
+		"cash_customer_id":                     settings.CashCustomerID.String(),
+		"tax_regime":                           settings.TaxRegime,
+		"exchange_rate_source":                 settings.ExchangeRateSource,
 		"require_stock_validation_before_sale": settings.RequireStockValidationBeforeSale,
 	}
 
@@ -161,8 +161,8 @@ func (c *UpdateTenantSettingsCommand) publishSettingsUpdatedEvent(
 	return c.eventPublisher.Publish(
 		ctx,
 		settings.TenantID.String(), // aggregate_id
-		"tenant_settings",           // aggregate_type
-		"tenant.settings.updated",   // event_type
+		"tenant_settings",          // aggregate_type
+		"tenant.settings.updated",  // event_type
 		payloadBytes,
 		"tenant-service", // published_by
 	)

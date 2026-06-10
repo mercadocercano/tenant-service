@@ -4,10 +4,10 @@ import "errors"
 
 // CreatePointOfSaleRequest representa la petición para crear un punto de venta
 type CreatePointOfSaleRequest struct {
-	Code                int    `json:"code" binding:"required"`
-	Description         string `json:"description" binding:"required"`
-	IsFiscalEnabled     bool   `json:"is_fiscal_enabled"`
-	DefaultInvoiceType  string `json:"default_invoice_type" binding:"required"`
+	Code               int    `json:"code" binding:"required"`
+	Description        string `json:"description" binding:"required"`
+	IsFiscalEnabled    bool   `json:"is_fiscal_enabled"`
+	DefaultInvoiceType string `json:"default_invoice_type" binding:"required"`
 }
 
 // Validate valida el request

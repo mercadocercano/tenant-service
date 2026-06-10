@@ -19,24 +19,24 @@ type TenantSettings struct {
 	AutoUpdateExchangeRate bool
 
 	// FISCAL
-	FiscalMode                string
-	InvoiceGeneration         string
-	AllowSaleIfAfipFails      bool
-	AutoRetryFailedInvoices   bool
-	EmailInvoiceAfterSuccess  bool
-	DefaultInvoiceType        string
-	TaxRegime                 string
+	FiscalMode               string
+	InvoiceGeneration        string
+	AllowSaleIfAfipFails     bool
+	AutoRetryFailedInvoices  bool
+	EmailInvoiceAfterSuccess bool
+	DefaultInvoiceType       string
+	TaxRegime                string
 
 	// STOCK
-	StockPolicy                       string
-	AllowNegativeStock                bool
-	RequireStockValidationBeforeSale  bool
+	StockPolicy                      string
+	AllowNegativeStock               bool
+	RequireStockValidationBeforeSale bool
 
 	// CRÉDITO
-	CreditEnabled             bool
-	DefaultCreditDays         int
-	MaxCreditLimit            float64
-	AllowSaleOverCreditLimit  bool
+	CreditEnabled            bool
+	DefaultCreditDays        int
+	MaxCreditLimit           float64
+	AllowSaleOverCreditLimit bool
 
 	// CLIENTE CONTADO
 	CashCustomerID uuid.UUID
@@ -49,14 +49,14 @@ type TenantSettings struct {
 // Constantes de validación
 const (
 	// FiscalMode
-	FiscalModeDisabled  = "DISABLED"
-	FiscalModeOptional  = "OPTIONAL"
-	FiscalModeRequired  = "REQUIRED"
+	FiscalModeDisabled = "DISABLED"
+	FiscalModeOptional = "OPTIONAL"
+	FiscalModeRequired = "REQUIRED"
 
 	// InvoiceGeneration
-	InvoiceGenerationManual         = "MANUAL"
-	InvoiceGenerationAutoOnSale     = "AUTO_ON_SALE"
-	InvoiceGenerationAutoOnConfirm  = "AUTO_ON_CONFIRM"
+	InvoiceGenerationManual        = "MANUAL"
+	InvoiceGenerationAutoOnSale    = "AUTO_ON_SALE"
+	InvoiceGenerationAutoOnConfirm = "AUTO_ON_CONFIRM"
 
 	// StockPolicy
 	StockPolicyIgnore  = "IGNORE"
@@ -64,8 +64,8 @@ const (
 	StockPolicyDeduct  = "DEDUCT"
 
 	// TaxRegime
-	TaxRegimeMonotributo           = "MONOTRIBUTO"
-	TaxRegimeResponsableInscripto  = "RESPONSABLE_INSCRIPTO"
+	TaxRegimeMonotributo          = "MONOTRIBUTO"
+	TaxRegimeResponsableInscripto = "RESPONSABLE_INSCRIPTO"
 
 	// ExchangeRateSource
 	ExchangeRateSourceManual      = "MANUAL"
@@ -75,28 +75,28 @@ const (
 // NewTenantSettings crea una nueva instancia con valores por defecto seguros
 func NewTenantSettings(tenantID uuid.UUID, cashCustomerID uuid.UUID) *TenantSettings {
 	return &TenantSettings{
-		TenantID:                     tenantID,
-		BaseCurrency:                 "ARS",
-		AllowedCurrencies:            []string{"ARS"},
-		ExchangeRateSource:           ExchangeRateSourceManual,
-		AutoUpdateExchangeRate:       false,
-		FiscalMode:                   FiscalModeDisabled,
-		InvoiceGeneration:            InvoiceGenerationManual,
-		AllowSaleIfAfipFails:         true,
-		AutoRetryFailedInvoices:      false,
-		EmailInvoiceAfterSuccess:     false,
-		DefaultInvoiceType:           "B",
-		TaxRegime:                    TaxRegimeMonotributo,
-		StockPolicy:                  StockPolicyIgnore,
-		AllowNegativeStock:           true,
+		TenantID:                         tenantID,
+		BaseCurrency:                     "ARS",
+		AllowedCurrencies:                []string{"ARS"},
+		ExchangeRateSource:               ExchangeRateSourceManual,
+		AutoUpdateExchangeRate:           false,
+		FiscalMode:                       FiscalModeDisabled,
+		InvoiceGeneration:                InvoiceGenerationManual,
+		AllowSaleIfAfipFails:             true,
+		AutoRetryFailedInvoices:          false,
+		EmailInvoiceAfterSuccess:         false,
+		DefaultInvoiceType:               "B",
+		TaxRegime:                        TaxRegimeMonotributo,
+		StockPolicy:                      StockPolicyIgnore,
+		AllowNegativeStock:               true,
 		RequireStockValidationBeforeSale: false,
-		CreditEnabled:                false,
-		DefaultCreditDays:            30,
-		MaxCreditLimit:               0,
-		AllowSaleOverCreditLimit:     false,
-		CashCustomerID:               cashCustomerID,
-		Version:                      1,
-		UpdatedAt:                    time.Now(),
+		CreditEnabled:                    false,
+		DefaultCreditDays:                30,
+		MaxCreditLimit:                   0,
+		AllowSaleOverCreditLimit:         false,
+		CashCustomerID:                   cashCustomerID,
+		Version:                          1,
+		UpdatedAt:                        time.Now(),
 	}
 }
 
