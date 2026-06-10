@@ -26,6 +26,10 @@
 - [Kong Integration](guides/kong-integration.md) — Rutas registradas, plugins, consumo desde otros servicios
 - [Bootstrap Endpoint](guides/bootstrap-endpoint.md) — Inicialización de tenant, integración con onboarding
 
+## API
+
+- [OpenAPI Spec](../api-docs/openapi.yaml) — Spec completa en formato OpenAPI 3.1 (linteable con Redocly)
+
 ## Desarrollo
 
 - [Auditoría](development/audit.md) — Reporte de arquitectura hexagonal y cobertura de tests

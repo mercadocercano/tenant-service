@@ -76,6 +76,7 @@ Ver [`docs/`](docs/README.md) para arquitectura detallada, ADRs, setup y guías 
 | [Kong Integration](docs/guides/kong-integration.md) | Rutas, plugins, consumo desde otros servicios |
 | [Bootstrap Endpoint](docs/guides/bootstrap-endpoint.md) | Inicialización de tenant |
 | [Auditoría](docs/development/audit.md) | Reporte de arquitectura y cobertura de tests |
+| [OpenAPI](api-docs/openapi.yaml) | Spec completa — `npx @redocly/cli lint api-docs/openapi.yaml` |
 
 ### ADRs
 

@@ -24,18 +24,22 @@
 
 ## Levantar en local con Docker
 
+El servicio usa módulos Go privados (`github.com/mercadocercano/*`, `github.com/hornosg/go-shared`). El Docker build los descarga en tiempo de build usando un GitHub token.
+
 ```bash
 # 1. Levantar infra compartida (si no está corriendo)
 make -C ~/Projects infra
 
-# 2. Levantar el tenant-service
-docker compose up -d
+# 2. Levantar el tenant-service (pasa token para módulos privados)
+GITHUB_TOKEN=$(gh auth token) docker compose up -d --build
 
 # 3. Verificar que está sano
 curl http://localhost:8125/health
 ```
 
 El servicio queda disponible en `localhost:8125`.
+
+> **Nota**: `GITHUB_TOKEN` solo se usa durante el build (`go mod download`). No queda en la imagen final — la variable se pasa como `ARG` de Docker, no como `ENV`.
 
 ## Levantar sin Docker (desarrollo Go directo)
 
