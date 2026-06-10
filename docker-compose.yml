@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
     container_name: mc-tenant-service
     ports:
       - "8125:8120"

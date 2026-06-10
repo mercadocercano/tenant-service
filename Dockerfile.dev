@@ -1,15 +1,38 @@
 # ==============================================
-# Tenant Service - Dev desde raíz (eventbus en libs/)
-# Requiere: context: . y volumes: - ./libs/eventbus:/libs/eventbus
+# Tenant Service — Dev con hot reload (Air)
+# Requiere: GITHUB_TOKEN para módulos privados
 # ==============================================
 FROM golang:1.24-alpine
+
 RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
+
+# Instalar Air (hot reload)
 RUN go install github.com/cosmtrek/air@v1.49.0
+
 WORKDIR /app
-RUN addgroup -g 1001 -S appgroup && adduser -S -D -h /app -s /bin/sh -G appgroup -u 1001 appuser
-# Dev: run as root para que go mod cache funcione con volumen nombrado
-USER root
+
+# Configurar acceso a módulos privados (usando token en tiempo de build)
+ARG GITHUB_TOKEN
+RUN if [ -n "$GITHUB_TOKEN" ]; then \
+      git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; \
+    fi
+
+ENV GOPRIVATE=github.com/mercadocercano/*
+
+# Descargar dependencias primero (aprovecha cache de capas Docker)
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Limpiar configuración de git con el token (no queda en capas subsiguientes)
+RUN git config --global --unset url."https://${GITHUB_TOKEN}@github.com/".insteadOf 2>/dev/null || true
+
+# Copiar fuentes (cambian frecuentemente, van al final)
+COPY . .
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8120/health || exit 1
+
 EXPOSE 8120
+
+# Air usa el cache de módulos descargado en la capa anterior
 CMD ["air", "-c", ".air.toml"]
