@@ -4,21 +4,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SharedConfig contiene la configuración para módulos compartidos
-type SharedConfig struct {
+// CORSConfig contiene la configuración CORS para el tenant-service
+type CORSConfig struct {
 	EnableCORS bool
 }
 
-// DefaultSharedConfig devuelve una configuración por defecto
-func DefaultSharedConfig() SharedConfig {
-	return SharedConfig{
+// DefaultCORSConfig devuelve la configuración CORS por defecto
+func DefaultCORSConfig() CORSConfig {
+	return CORSConfig{
 		EnableCORS: true,
 	}
 }
 
-// SetupSharedMiddleware configura los middlewares compartidos
-func SetupSharedMiddleware(router *gin.Engine, config SharedConfig) {
-	// CORS básico para desarrollo
+// SetupCORSMiddleware configura el middleware CORS básico para desarrollo
+func SetupCORSMiddleware(router *gin.Engine, config CORSConfig) {
 	if config.EnableCORS {
 		router.Use(func(c *gin.Context) {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")

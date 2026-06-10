@@ -123,3 +123,67 @@ func TestPostgresTenantConfigRepository_GetByKey_NotFound(t *testing.T) {
 	assert.Nil(t, config)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestPostgresTenantConfigRepository_Delete(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := NewPostgresTenantConfigRepository(db)
+
+	tenantID := uuid.New()
+	key := "catalog.stock_policy"
+
+	mock.ExpectExec("DELETE FROM tenant_config").
+		WithArgs(tenantID, key).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.Delete(context.Background(), tenantID, key)
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPostgresTenantConfigRepository_GetAllByTenant(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := NewPostgresTenantConfigRepository(db)
+
+	tenantID := uuid.New()
+	now := time.Now()
+
+	rows := sqlmock.NewRows([]string{"id", "tenant_id", "config_key", "config_value", "created_at", "updated_at"}).
+		AddRow(uuid.New(), tenantID, "catalog.stock_policy", "IGNORE_STOCK", now, now).
+		AddRow(uuid.New(), tenantID, "fiscal.mode", "DISABLED", now, now)
+
+	mock.ExpectQuery("SELECT (.+) FROM tenant_config").
+		WithArgs(tenantID).
+		WillReturnRows(rows)
+
+	configs, err := repo.GetAllByTenant(context.Background(), tenantID)
+
+	assert.NoError(t, err)
+	assert.Len(t, configs, 2)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPostgresTenantConfigRepository_GetAllByTenant_Empty(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := NewPostgresTenantConfigRepository(db)
+	tenantID := uuid.New()
+
+	mock.ExpectQuery("SELECT (.+) FROM tenant_config").
+		WithArgs(tenantID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "config_key", "config_value", "created_at", "updated_at"}))
+
+	configs, err := repo.GetAllByTenant(context.Background(), tenantID)
+
+	assert.NoError(t, err)
+	assert.Empty(t, configs)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

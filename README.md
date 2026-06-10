@@ -324,6 +324,27 @@ Consume `tenant.settings.updated` para:
 - Aplicar `invoice_generation` automática
 - Usar `default_invoice_type`
 
+## Documentación
+
+Ver [`docs/`](docs/README.md) para arquitectura, ADRs, setup y guías operativas.
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Arquitectura](docs/architecture/overview.md) | Capas, componentes, modelo de datos |
+| [Write Path](docs/architecture/write-path.md) | Optimistic locking, domain events |
+| [Getting Started](docs/setup/getting-started.md) | Variables de entorno, cómo levantar |
+| [Deployment](docs/runbooks/deployment.md) | Deploy, migraciones, rollback |
+| [Kong Integration](docs/guides/kong-integration.md) | Rutas, plugins, consumo desde otros servicios |
+| [Bootstrap Endpoint](docs/guides/bootstrap-endpoint.md) | Inicialización de tenant |
+
+### ADRs
+
+| ADR | Decisión |
+|-----|----------|
+| [ADR-001](docs/adr/ADR-001-arquitectura-hexagonal-ddd.md) | Arquitectura Hexagonal y DDD |
+| [ADR-002](docs/adr/ADR-002-separacion-tenant-db-eventbus.md) | Separación tenant_db y eventbus |
+| [ADR-003](docs/adr/ADR-003-domain-events-via-eventbus.md) | Domain Events vía EventBus |
+
 ## Contacto
 
 Para consultas sobre este servicio, contactar al equipo de arquitectura.

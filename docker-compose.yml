@@ -1,58 +1,80 @@
 version: '3.8'
 
 services:
+  tenant-postgres-setup:
+    image: pgvector/pgvector:pg15
+    container_name: mc-tenant-postgres-setup
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    command: >
+      sh -c "
+        psql -h lab-postgres -U ${POSTGRES_USER:-postgres} -c 'CREATE DATABASE tenant_db;' || true &&
+        psql -h lab-postgres -U ${POSTGRES_USER:-postgres} -c 'CREATE DATABASE eventbus;' || true &&
+        echo 'Databases tenant_db and eventbus ready.'
+      "
+    networks:
+      - lab-network
+
   tenant-service:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: development
-    container_name: tenant-service
+      dockerfile: Dockerfile.dev
+    container_name: mc-tenant-service
     ports:
-      - "8125:8120"  # Puerto externo 8125 (8120 ya usado por order-service)
+      - "8125:8120"
     environment:
-      - DB_HOST=tenant-db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=tenant_db
-      - PORT=8120
-      - PROMETHEUS_ENABLED=true
-      - GIN_MODE=debug
+      DB_HOST: lab-postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: tenant_db
+      EVENTBUS_DB_HOST: lab-postgres
+      EVENTBUS_DB_PORT: 5432
+      EVENTBUS_DB_USER: ${POSTGRES_USER:-postgres}
+      EVENTBUS_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      EVENTBUS_DB_NAME: eventbus
+      PORT: 8120
+      PROMETHEUS_ENABLED: "true"
+      GIN_MODE: debug
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-me-in-production-min-32-chars}
     volumes:
       - .:/app
       - /app/tmp
     depends_on:
-      tenant-db:
-        condition: service_healthy
+      - tenant-postgres-setup
     networks:
-      - tenant-network
+      - lab-network
+    labels:
+      - "logging=promtail"
+      - "service_name=tenant-service"
     restart: unless-stopped
 
-  tenant-db:
-    image: postgres:15-alpine
-    container_name: tenant-db
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=tenant_db
-    ports:
-      - "5435:5432"
-    volumes:
-      - tenant-db-data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - tenant-network
-    restart: unless-stopped
-
-volumes:
-  tenant-db-data:
-    driver: local
+  # LEGACY: tenant-db standalone — comentado, usar lab-postgres
+  # tenant-db:
+  #   image: postgres:15-alpine
+  #   container_name: tenant-db
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=tenant_db
+  #   ports:
+  #     - "5435:5432"
+  #   volumes:
+  #     - tenant-db-data:/var/lib/postgresql/data
+  #     - ./migrations:/docker-entrypoint-initdb.d
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - tenant-network
+  #   restart: unless-stopped
 
 networks:
-  tenant-network:
-    driver: bridge
+  lab-network:
+    external: true
+
+# volumes:
+#   tenant-db-data:
+#     driver: local

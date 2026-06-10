@@ -1,0 +1,8 @@
+{
+  "name": "tenant-service — local",
+  "values": [
+    { "key": "baseUrl", "value": "http://localhost:8125", "enabled": true },
+    { "key": "tenantId", "value": "550e8400-e29b-41d4-a716-446655440000", "enabled": true },
+    { "key": "jwtToken", "value": "", "enabled": true }
+  ]
+}

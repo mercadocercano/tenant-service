@@ -1,0 +1,264 @@
+{
+  "info": {
+    "name": "Tenant Service",
+    "description": "Colección de endpoints del Tenant Service — configuración operativa y fiscal del tenant",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8125", "type": "string" },
+    { "key": "tenantId", "value": "550e8400-e29b-41d4-a716-446655440000", "type": "string" },
+    { "key": "jwtToken", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('healthy', () => pm.expect(pm.response.json().status).to.eql('healthy'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bootstrap",
+      "item": [
+        {
+          "name": "POST /api/v1/tenant/bootstrap",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/bootstrap", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "bootstrap"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200 or 409', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tenant Config (key-value)",
+      "item": [
+        {
+          "name": "POST /api/v1/tenant/config",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"catalog.stock_policy\",\n  \"value\": \"IGNORE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/config", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "config"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect([200, 201]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/tenant/config/:key",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/config/catalog.stock_policy", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "config", "catalog.stock_policy"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has key', () => pm.expect(pm.response.json()).to.have.property('key'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tenant Settings",
+      "item": [
+        {
+          "name": "GET /api/v1/tenant/settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/settings", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "settings"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has fiscal_mode', () => pm.expect(pm.response.json()).to.have.property('fiscal_mode'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/v1/tenant/settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"base_currency\": \"ARS\",\n  \"allowed_currencies\": [\"ARS\"],\n  \"exchange_rate_source\": \"MANUAL\",\n  \"auto_update_exchange_rate\": false,\n  \"fiscal_mode\": \"OPTIONAL\",\n  \"invoice_generation\": \"MANUAL\",\n  \"allow_sale_if_afip_fails\": true,\n  \"auto_retry_failed_invoices\": false,\n  \"email_invoice_after_success\": false,\n  \"default_invoice_type\": \"B\",\n  \"tax_regime\": \"MONOTRIBUTO\",\n  \"stock_policy\": \"IGNORE\",\n  \"allow_negative_stock\": true,\n  \"require_stock_validation_before_sale\": false,\n  \"credit_enabled\": false,\n  \"default_credit_days\": 30,\n  \"max_credit_limit\": 0,\n  \"allow_sale_over_credit_limit\": false,\n  \"cash_customer_id\": \"00000000-0000-0000-0000-000000000001\",\n  \"version\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/settings", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "settings"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Points of Sale",
+      "item": [
+        {
+          "name": "POST /api/v1/tenant/points-of-sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": 1,\n  \"description\": \"Sucursal Central\",\n  \"is_fiscal_enabled\": true,\n  \"default_invoice_type\": \"B\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/points-of-sale", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "points-of-sale"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('has id', () => { const b = pm.response.json(); pm.expect(b).to.have.property('id'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/tenant/points-of-sale",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenantId}}" },
+              { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/points-of-sale", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "points-of-sale"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Casos negativos",
+      "item": [
+        {
+          "name": "Sin token → 401",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenantId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/settings", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "settings"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin X-Tenant-ID → 401",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/tenant/settings", "host": ["{{baseUrl}}"], "path": ["api", "v1", "tenant", "settings"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

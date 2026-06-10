@@ -1,8 +1,8 @@
 module tenant
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.23.5
+toolchain go1.25.0
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/mercadocercano/eventbus v0.1.0
+	github.com/mercadocercano/go-shared v0.2.0
 	github.com/mercadocercano/middleware v0.1.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stretchr/testify v1.10.0

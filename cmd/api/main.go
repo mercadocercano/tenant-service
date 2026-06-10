@@ -5,12 +5,13 @@ import (
 	"log"
 	"os"
 
-	sharedConfig "tenant/src/shared/infrastructure/config"
+	localConfig "tenant/src/shared/infrastructure/config"
 	tenantConfig "tenant/src/tenant/infrastructure/config"
 	"tenant/src/tenant/infrastructure/event"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	sharedConfig "github.com/mercadocercano/go-shared/infrastructure/config"
 	tenantmw "github.com/mercadocercano/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -53,9 +54,16 @@ func main() {
 		log.Println("Prometheus metrics disabled for Tenant service")
 	}
 
-	// Configurar middlewares compartidos
-	sharedCfg := sharedConfig.DefaultSharedConfig()
-	sharedConfig.SetupSharedMiddleware(router, sharedCfg)
+	// Configurar middlewares compartidos (Gzip via go-shared + CORS local)
+	gzipCfg := sharedConfig.SharedConfig{
+		EnableGzip:          true,
+		AlwaysTryDecompress: true,
+		GzipExcludedPaths:   []string{"/health", "/metrics"},
+	}
+	sharedConfig.SetupSharedMiddleware(router, gzipCfg)
+
+	corsCfg := localConfig.DefaultCORSConfig()
+	localConfig.SetupCORSMiddleware(router, corsCfg)
 
 	// Obtener configuración de la base de datos de variables de entorno
 	dbHost := getEnv("DB_HOST", "localhost")
