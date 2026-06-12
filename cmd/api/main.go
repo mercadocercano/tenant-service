@@ -10,22 +10,14 @@ import (
 	"tenant/src/tenant/infrastructure/event"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
 	sharedConfig "github.com/hornosg/go-shared/infrastructure/config"
+	"github.com/hornosg/go-shared/infrastructure/env"
 	tenantmw "github.com/hornosg/go-shared/infrastructure/middleware"
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mercadocercano/eventbus"
 )
-
-// getEnv obtiene una variable de entorno o devuelve un valor por defecto
-func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
 
 func main() {
 	// Configurar el router con Gin
@@ -66,11 +58,11 @@ func main() {
 	localConfig.SetupCORSMiddleware(router, corsCfg)
 
 	// Obtener configuración de la base de datos de variables de entorno
-	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT", "5432")
-	dbUser := getEnv("DB_USER", "postgres")
-	dbPassword := getEnv("DB_PASSWORD", "postgres")
-	dbName := getEnv("DB_NAME", "tenant_db")
+	dbHost := env.Get("DB_HOST", "localhost")
+	dbPort := env.Get("DB_PORT", "5432")
+	dbUser := env.Get("DB_USER", "postgres")
+	dbPassword := env.Get("DB_PASSWORD", "postgres")
+	dbName := env.Get("DB_NAME", "tenant_db")
 
 	// Crear string de conexión
 	connStr := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
@@ -91,11 +83,11 @@ func main() {
 	log.Println("Conexión a la base de datos establecida con éxito")
 
 	// Conectar a la base de datos del eventbus
-	eventBusHost := getEnv("EVENTBUS_DB_HOST", "localhost")
-	eventBusPort := getEnv("EVENTBUS_DB_PORT", "5432")
-	eventBusUser := getEnv("EVENTBUS_DB_USER", "postgres")
-	eventBusPassword := getEnv("EVENTBUS_DB_PASSWORD", "postgres")
-	eventBusName := getEnv("EVENTBUS_DB_NAME", "eventbus")
+	eventBusHost := env.Get("EVENTBUS_DB_HOST", "localhost")
+	eventBusPort := env.Get("EVENTBUS_DB_PORT", "5432")
+	eventBusUser := env.Get("EVENTBUS_DB_USER", "postgres")
+	eventBusPassword := env.Get("EVENTBUS_DB_PASSWORD", "postgres")
+	eventBusName := env.Get("EVENTBUS_DB_NAME", "eventbus")
 
 	eventBusConnStr := "postgres://" + eventBusUser + ":" + eventBusPassword + "@" + eventBusHost + ":" + eventBusPort + "/" + eventBusName + "?sslmode=disable"
 	log.Printf("Conectando a EventBus en %s", eventBusConnStr)
@@ -134,7 +126,7 @@ func main() {
 	setupTenantModule(v1, db, eventPublisher)
 
 	// Obtener puerto del entorno
-	port := getEnv("PORT", "8120")
+	port := env.Get("PORT", "8120")
 
 	// Iniciar el servidor
 	log.Printf("Servidor iniciando en http://localhost:%s", port)
