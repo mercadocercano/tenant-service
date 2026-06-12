@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ import (
 	sharedConfig "github.com/hornosg/go-shared/infrastructure/config"
 	"github.com/hornosg/go-shared/infrastructure/env"
 	tenantmw "github.com/hornosg/go-shared/infrastructure/middleware"
-	_ "github.com/lib/pq"
+	"github.com/hornosg/go-shared/infrastructure/postgres"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mercadocercano/eventbus"
@@ -64,23 +65,24 @@ func main() {
 	dbPassword := env.Get("DB_PASSWORD", "postgres")
 	dbName := env.Get("DB_NAME", "tenant_db")
 
-	// Crear string de conexión
-	connStr := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
 	log.Printf("Intentando conectar a postgres://%s:***@%s:%s/%s", dbUser, dbHost, dbPort, dbName)
 
 	// Conectar a la base de datos
-	db, err := sql.Open("postgres", connStr)
+	db, err := postgres.Connect(postgres.Config{
+		Host:     dbHost,
+		Port:     dbPort,
+		User:     dbUser,
+		Password: dbPassword,
+		DBName:   dbName,
+		SSLMode:  "disable",
+	})
 	if err != nil {
 		log.Fatalf("Error al conectar a la base de datos: %v", err)
 	}
 	defer db.Close()
-
-	// Comprobar la conexión
-	err = db.Ping()
-	if err != nil {
-		log.Fatalf("Error al verificar la conexión a la base de datos: %v", err)
-	}
 	log.Println("Conexión a la base de datos establecida con éxito")
+
+	postgres.StartPoolMonitor(context.Background(), db, postgres.MonitorOptions{Service: "tenant-service", DBName: dbName})
 
 	// Conectar a la base de datos del eventbus
 	eventBusHost := env.Get("EVENTBUS_DB_HOST", "localhost")
@@ -89,20 +91,23 @@ func main() {
 	eventBusPassword := env.Get("EVENTBUS_DB_PASSWORD", "postgres")
 	eventBusName := env.Get("EVENTBUS_DB_NAME", "eventbus")
 
-	eventBusConnStr := "postgres://" + eventBusUser + ":" + eventBusPassword + "@" + eventBusHost + ":" + eventBusPort + "/" + eventBusName + "?sslmode=disable"
-	log.Printf("Conectando a EventBus en %s", eventBusConnStr)
+	log.Printf("Conectando a EventBus en postgres://%s:***@%s:%s/%s", eventBusUser, eventBusHost, eventBusPort, eventBusName)
 
-	eventBusDB, err := sql.Open("postgres", eventBusConnStr)
+	eventBusDB, err := postgres.Connect(postgres.Config{
+		Host:     eventBusHost,
+		Port:     eventBusPort,
+		User:     eventBusUser,
+		Password: eventBusPassword,
+		DBName:   eventBusName,
+		SSLMode:  "disable",
+	})
 	if err != nil {
 		log.Fatalf("Error al conectar a la base de datos del eventbus: %v", err)
 	}
 	defer eventBusDB.Close()
-
-	err = eventBusDB.Ping()
-	if err != nil {
-		log.Fatalf("Error al verificar la conexión al eventbus: %v", err)
-	}
 	log.Println("Conexión al eventbus establecida con éxito")
+
+	postgres.StartPoolMonitor(context.Background(), eventBusDB, postgres.MonitorOptions{Service: "tenant-service", DBName: eventBusName})
 
 	// Configurar eventbus publisher
 	logger := eventbus.NewLogger(eventbus.LevelInfo)
