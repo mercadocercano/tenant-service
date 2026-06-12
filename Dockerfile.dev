@@ -2,12 +2,12 @@
 # Tenant Service — Dev con hot reload (Air)
 # Requiere: GITHUB_TOKEN para módulos privados
 # ==============================================
-FROM golang:1.24-alpine
+FROM golang:1.25-alpine
 
 RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
 
 # Instalar Air (hot reload)
-RUN go install github.com/cosmtrek/air@v1.49.0
+RUN go install github.com/air-verse/air@v1.61.7
 
 WORKDIR /app
 

@@ -5,7 +5,7 @@
 # ==============================================
 # Stage 1: Dependencies and cache optimization
 # ==============================================
-FROM golang:1.24-alpine AS deps
+FROM golang:1.25-alpine AS deps
 WORKDIR /app
 
 # Install build dependencies
