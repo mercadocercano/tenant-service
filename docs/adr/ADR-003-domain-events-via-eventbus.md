@@ -1,3 +1,14 @@
+---
+adr: ADR-003
+status: accepted
+skills:
+  implement:
+    - dev/hexagonal-go
+  verify:
+    - dev/go-hex-audit
+    - dev/code-reviewer
+    - dev/event-driven
+---
 # ADR-003: Domain Events vía EventBus (PostgreSQL-backed)
 
 **Estado**: Aceptado

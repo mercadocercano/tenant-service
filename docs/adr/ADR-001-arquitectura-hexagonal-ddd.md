@@ -1,3 +1,12 @@
+---
+adr: ADR-001
+status: accepted
+skills:
+  implement:
+    - dev/hexagonal-go
+  verify:
+    - dev/go-hex-audit
+---
 # ADR-001: Arquitectura Hexagonal y DDD
 
 **Estado**: Aceptado

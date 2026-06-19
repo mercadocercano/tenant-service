@@ -1,3 +1,14 @@
+---
+adr: ADR-002
+status: accepted
+skills:
+  implement:
+    - dev/hexagonal-go
+  verify:
+    - dev/code-reviewer
+    - dev/postgres-data-modeling
+    - dev/event-driven
+---
 # ADR-002: Separación de tenant_db y eventbus en PostgreSQL
 
 **Estado**: Aceptado
