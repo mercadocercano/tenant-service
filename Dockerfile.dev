@@ -1,6 +1,7 @@
+# syntax=docker/dockerfile:1
 # ==============================================
 # Tenant Service — Dev con hot reload (Air)
-# Requiere: GITHUB_TOKEN para módulos privados
+# Requiere: GITHUB_TOKEN como BuildKit secret para módulos privados (eventbus)
 # ==============================================
 FROM golang:1.25-alpine
 
@@ -11,20 +12,17 @@ RUN go install github.com/air-verse/air@v1.61.7
 
 WORKDIR /app
 
-# Configurar acceso a módulos privados (usando token en tiempo de build)
-ARG GITHUB_TOKEN
-RUN if [ -n "$GITHUB_TOKEN" ]; then \
-      git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"; \
-    fi
-
 ENV GOPRIVATE=github.com/mercadocercano/*
 
-# Descargar dependencias primero (aprovecha cache de capas Docker)
+# Descargar dependencias con el token montado como BuildKit secret: solo existe
+# durante este RUN y el gitconfig se borra al final → el token NUNCA queda en capas.
 COPY go.mod go.sum ./
-RUN go mod download
-
-# Limpiar configuración de git con el token (no queda en capas subsiguientes)
-RUN git config --global --unset url."https://${GITHUB_TOKEN}@github.com/".insteadOf 2>/dev/null || true
+RUN --mount=type=secret,id=github_token \
+    if [ -s /run/secrets/github_token ]; then \
+      git config --global url."https://$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/"; \
+    fi && \
+    go mod download && \
+    rm -f /root/.gitconfig
 
 # Copiar fuentes (cambian frecuentemente, van al final)
 COPY . .
