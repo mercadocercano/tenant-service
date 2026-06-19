@@ -3,8 +3,8 @@ package command
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"tenant/src/tenant/domain/entity"
+	"tenant/src/tenant/domain/port"
 	"tenant/src/tenant/domain/repository"
 
 	"github.com/google/uuid"
@@ -14,6 +14,7 @@ import (
 type CreatePointOfSaleCommand struct {
 	repository     repository.PointOfSaleRepository
 	eventPublisher EventPublisher
+	logger         port.TenantEventLogger
 }
 
 // NewCreatePointOfSaleCommand crea una nueva instancia del command
@@ -21,6 +22,22 @@ func NewCreatePointOfSaleCommand(repo repository.PointOfSaleRepository, eventPub
 	return &CreatePointOfSaleCommand{
 		repository:     repo,
 		eventPublisher: eventPublisher,
+	}
+}
+
+// NewCreatePointOfSaleCommandWithLogger crea una instancia con logger canónico inyectado.
+func NewCreatePointOfSaleCommandWithLogger(repo repository.PointOfSaleRepository, eventPublisher EventPublisher, logger port.TenantEventLogger) *CreatePointOfSaleCommand {
+	return &CreatePointOfSaleCommand{
+		repository:     repo,
+		eventPublisher: eventPublisher,
+		logger:         logger,
+	}
+}
+
+// logEvent emite un evento canónico si hay logger inyectado (nil-safe).
+func (c *CreatePointOfSaleCommand) logEvent(e port.TenantEvent) {
+	if c.logger != nil {
+		c.logger.Log(e)
 	}
 }
 
@@ -33,28 +50,26 @@ func (c *CreatePointOfSaleCommand) Execute(
 	isFiscalEnabled bool,
 	defaultInvoiceType string,
 ) (*entity.PointOfSale, error) {
-	log.Printf("[CreatePointOfSale] Creating POS for tenant %s, code %d", tenantID, code)
-
 	// 1. Crear entidad
 	pos := entity.NewPointOfSale(tenantID, code, description, isFiscalEnabled, defaultInvoiceType)
 
 	// 2. Validar
 	if err := pos.Validate(); err != nil {
-		log.Printf("[CreatePointOfSale] Validation error: %v", err)
+		c.logEvent(port.TenantEvent{Event: "tenant.pos_create_failed", TenantID: tenantID.String(), Reason: err.Error()})
 		return nil, err
 	}
 
 	// 3. Persistir
 	if err := c.repository.Create(ctx, pos); err != nil {
-		log.Printf("[CreatePointOfSale] Error creating POS: %v", err)
+		c.logEvent(port.TenantEvent{Event: "tenant.pos_create_failed", TenantID: tenantID.String(), Reason: err.Error()})
 		return nil, err
 	}
 
-	log.Printf("[CreatePointOfSale] POS created successfully: %s", pos.ID)
+	c.logEvent(port.TenantEvent{Event: "tenant.pos_created", TenantID: tenantID.String(), PosID: pos.ID.String()})
 
 	// 4. Publicar evento tenant.point_of_sale.created
 	if err := c.publishPOSCreatedEvent(ctx, pos); err != nil {
-		log.Printf("[CreatePointOfSale] WARNING: failed to publish event: %v", err)
+		_ = err // intencional: error no falla la operación (venta ya registrada)
 	}
 
 	return pos, nil

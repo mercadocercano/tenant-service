@@ -7,8 +7,10 @@ import (
 	"os"
 
 	localConfig "tenant/src/shared/infrastructure/config"
+	"tenant/src/tenant/domain/port"
 	tenantConfig "tenant/src/tenant/infrastructure/config"
 	"tenant/src/tenant/infrastructure/event"
+	tenantlogging "tenant/src/tenant/infrastructure/logging"
 
 	"github.com/gin-gonic/gin"
 	sharedConfig "github.com/hornosg/go-shared/infrastructure/config"
@@ -127,8 +129,11 @@ func main() {
 	// API v1 grupo de rutas
 	v1 := router.Group("/api/v1")
 
+	// Inicializar logger canónico ADR-001
+	tenantLogger := tenantlogging.NewTenantLogger("tenant-service")
+
 	// Configurar módulo tenant (con eventbus)
-	setupTenantModule(v1, db, eventPublisher)
+	setupTenantModule(v1, db, eventPublisher, tenantLogger)
 
 	// Obtener puerto del entorno
 	port := env.Get("PORT", "8120")
@@ -139,11 +144,11 @@ func main() {
 }
 
 // setupTenantModule configura el módulo Tenant
-func setupTenantModule(router *gin.RouterGroup, db *sql.DB, eventPublisher *event.EventPublisherAdapter) {
+func setupTenantModule(router *gin.RouterGroup, db *sql.DB, eventPublisher *event.EventPublisherAdapter, logger port.TenantEventLogger) {
 	log.Println("Configurando módulo Tenant...")
 
-	// Crear configuración completa del módulo Tenant con eventbus
-	tenantCfg := tenantConfig.NewExtendedTenantModuleConfig(db, eventPublisher)
+	// Crear configuración completa del módulo Tenant con eventbus y logger canónico (ADR-001)
+	tenantCfg := tenantConfig.NewExtendedTenantModuleConfigWithLogger(db, eventPublisher, logger)
 
 	// Registrar rutas existentes (key-value)
 	tenantCfg.ConfigController.RegisterRoutes(router)

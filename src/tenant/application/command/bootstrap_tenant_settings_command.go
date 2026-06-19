@@ -2,8 +2,8 @@ package command
 
 import (
 	"context"
-	"log"
 	"tenant/src/tenant/domain/entity"
+	"tenant/src/tenant/domain/port"
 	"tenant/src/tenant/domain/repository"
 
 	"github.com/google/uuid"
@@ -13,12 +13,28 @@ import (
 // Este command es idempotente: solo crea settings si no existen
 type BootstrapTenantSettingsCommand struct {
 	repository repository.TenantSettingsRepository
+	logger     port.TenantEventLogger
 }
 
 // NewBootstrapTenantSettingsCommand crea una nueva instancia del command
 func NewBootstrapTenantSettingsCommand(repo repository.TenantSettingsRepository) *BootstrapTenantSettingsCommand {
 	return &BootstrapTenantSettingsCommand{
 		repository: repo,
+	}
+}
+
+// NewBootstrapTenantSettingsCommandWithLogger crea una instancia con logger canónico inyectado.
+func NewBootstrapTenantSettingsCommandWithLogger(repo repository.TenantSettingsRepository, logger port.TenantEventLogger) *BootstrapTenantSettingsCommand {
+	return &BootstrapTenantSettingsCommand{
+		repository: repo,
+		logger:     logger,
+	}
+}
+
+// logEvent emite un evento canónico si hay logger inyectado (nil-safe).
+func (c *BootstrapTenantSettingsCommand) logEvent(e port.TenantEvent) {
+	if c.logger != nil {
+		c.logger.Log(e)
 	}
 }
 
@@ -29,17 +45,15 @@ func (c *BootstrapTenantSettingsCommand) Execute(
 	tenantID uuid.UUID,
 	cashCustomerID uuid.UUID,
 ) (bool, error) {
-	log.Printf("[BootstrapTenantSettings] Starting bootstrap for tenant %s", tenantID)
-
 	// Verificar si ya existen settings
 	exists, err := c.repository.Exists(ctx, tenantID)
 	if err != nil {
-		log.Printf("[BootstrapTenantSettings] Error checking if settings exist: %v", err)
+		c.logEvent(port.TenantEvent{Event: "tenant.settings_bootstrap_failed", TenantID: tenantID.String(), Reason: err.Error()})
 		return false, err
 	}
 
 	if exists {
-		log.Printf("[BootstrapTenantSettings] Settings already exist for tenant %s, skipping", tenantID)
+		c.logEvent(port.TenantEvent{Event: "tenant.settings_already_exists", TenantID: tenantID.String()})
 		return false, nil
 	}
 
@@ -48,16 +62,16 @@ func (c *BootstrapTenantSettingsCommand) Execute(
 
 	// Validar
 	if err := settings.Validate(); err != nil {
-		log.Printf("[BootstrapTenantSettings] Validation error: %v", err)
+		c.logEvent(port.TenantEvent{Event: "tenant.settings_bootstrap_failed", TenantID: tenantID.String(), Reason: err.Error()})
 		return false, err
 	}
 
 	// Persistir
 	if err := c.repository.Save(ctx, settings); err != nil {
-		log.Printf("[BootstrapTenantSettings] Error saving settings: %v", err)
+		c.logEvent(port.TenantEvent{Event: "tenant.settings_bootstrap_failed", TenantID: tenantID.String(), Reason: err.Error()})
 		return false, err
 	}
 
-	log.Printf("[BootstrapTenantSettings] Settings created successfully for tenant %s", tenantID)
+	c.logEvent(port.TenantEvent{Event: "tenant.settings_bootstrapped", TenantID: tenantID.String()})
 	return true, nil
 }

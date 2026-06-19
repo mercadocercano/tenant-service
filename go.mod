@@ -6,7 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
-	github.com/hornosg/go-shared v0.7.0
+	github.com/hornosg/go-shared v0.8.0
 	github.com/lib/pq v1.10.9
 	github.com/mercadocercano/eventbus v0.1.0
 	github.com/prometheus/client_golang v1.22.0

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"tenant/src/tenant/application/command"
 	"tenant/src/tenant/application/query"
+	"tenant/src/tenant/domain/port"
 	"tenant/src/tenant/infrastructure/controller"
 	"tenant/src/tenant/infrastructure/persistence"
 )
@@ -37,22 +38,27 @@ func NewTenantModuleConfig(db *sql.DB) *TenantModuleConfig {
 
 // NewExtendedTenantModuleConfig crea el módulo completo con configuraciones estructuradas
 func NewExtendedTenantModuleConfig(db *sql.DB, eventPublisher command.EventPublisher) *TenantModuleConfig {
+	return NewExtendedTenantModuleConfigWithLogger(db, eventPublisher, nil)
+}
+
+// NewExtendedTenantModuleConfigWithLogger crea el módulo completo inyectando un logger canónico (ADR-001).
+func NewExtendedTenantModuleConfigWithLogger(db *sql.DB, eventPublisher command.EventPublisher, logger port.TenantEventLogger) *TenantModuleConfig {
 	// === KEY-VALUE (EXISTENTE) ===
 	configRepo := persistence.NewPostgresTenantConfigRepository(db)
 	getConfigQuery := query.NewGetTenantConfigQuery(configRepo)
 	setConfigCommand := command.NewSetTenantConfigCommand(configRepo)
-	bootstrapCommand := command.NewBootstrapTenantConfigCommand(configRepo)
+	bootstrapCommand := command.NewBootstrapTenantConfigCommandWithLogger(configRepo, logger)
 	configController := controller.NewTenantConfigController(getConfigQuery, setConfigCommand, bootstrapCommand)
 
 	// === TENANT SETTINGS (NUEVO) ===
 	settingsRepo := persistence.NewPostgresTenantSettingsRepository(db)
 	getSettingsQuery := query.NewGetTenantSettingsQuery(settingsRepo)
-	updateSettingsCommand := command.NewUpdateTenantSettingsCommand(settingsRepo, eventPublisher)
+	updateSettingsCommand := command.NewUpdateTenantSettingsCommandWithLogger(settingsRepo, eventPublisher, logger)
 	settingsController := controller.NewTenantSettingsController(getSettingsQuery, updateSettingsCommand)
 
 	// === POINTS OF SALE (NUEVO) ===
 	posRepo := persistence.NewPostgresPointOfSaleRepository(db)
-	createPOSCommand := command.NewCreatePointOfSaleCommand(posRepo, eventPublisher)
+	createPOSCommand := command.NewCreatePointOfSaleCommandWithLogger(posRepo, eventPublisher, logger)
 	listPOSQuery := query.NewListPointsOfSaleQuery(posRepo)
 	posController := controller.NewPointOfSaleController(createPOSCommand, listPOSQuery)
 
