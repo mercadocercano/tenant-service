@@ -17,9 +17,12 @@ import (
 	"github.com/hornosg/go-shared/infrastructure/env"
 	tenantmw "github.com/hornosg/go-shared/infrastructure/middleware"
 	"github.com/hornosg/go-shared/infrastructure/postgres"
+	sharedmigrate "github.com/hornosg/go-shared/migrate"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/mercadocercano/eventbus"
+
+	tenantroot "tenant"
 )
 
 func main() {
@@ -86,6 +89,11 @@ func main() {
 	log.Println("Conexión a la base de datos establecida con éxito")
 
 	postgres.StartPoolMonitor(context.Background(), db, postgres.MonitorOptions{Service: "tenant-service", DBName: dbName})
+
+	// Migraciones versionadas in-app (ADR-001) — fail-fast antes de servir tráfico.
+	if err := sharedmigrate.RunMigrations(db, tenantroot.MigrationsFS, dbName); err != nil {
+		log.Fatalf("Error running migrations: %v", err)
+	}
 
 	// Conectar a la base de datos del eventbus
 	eventBusHost := env.Get("EVENTBUS_DB_HOST", "localhost")
