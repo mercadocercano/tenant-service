@@ -3,9 +3,11 @@
 # Tenant Service — Dev con hot reload (Air)
 # Requiere: GITHUB_TOKEN como BuildKit secret para módulos privados (eventbus)
 # ==============================================
-FROM golang:1.25-alpine
+FROM golang:1.25-bookworm
 
-RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates tzdata curl postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
 # Instalar Air (hot reload)
 RUN go install github.com/air-verse/air@v1.61.7
