@@ -48,6 +48,19 @@ func (m *mockConfigRepo) GetAllByTenant(ctx context.Context, tenantID uuid.UUID)
 	return args.Get(0).([]*entity.TenantConfig), args.Error(1)
 }
 
+// injectTenantClaim simula tenantmw.TenantValidation en los tests de controller: copia el header
+// X-Tenant-ID (que en producción el middleware valida contra el claim del JWT) al gin context como
+// "tenant_id", que es lo que los controllers consumen tras PLAT-E29 T6. Sin header ⇒ sin claim ⇒
+// el controller responde 401 (fail-closed), igual que en runtime real sin JWT válido.
+func injectTenantClaim() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if h := c.GetHeader("X-Tenant-ID"); h != "" {
+			c.Set("tenant_id", h)
+		}
+		c.Next()
+	}
+}
+
 func setupConfigController(repo *mockConfigRepo) (*TenantConfigController, *gin.Engine) {
 	getQ := query.NewGetTenantConfigQuery(repo)
 	setCmd := command.NewSetTenantConfigCommand(repo)
@@ -55,6 +68,7 @@ func setupConfigController(repo *mockConfigRepo) (*TenantConfigController, *gin.
 	ctrl := NewTenantConfigController(getQ, setCmd, bootCmd)
 
 	r := gin.New()
+	r.Use(injectTenantClaim())
 	v1 := r.Group("/api/v1")
 	ctrl.RegisterRoutes(v1)
 	return ctrl, r
@@ -107,7 +121,8 @@ func TestGetConfig_MissingTenantHeader(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/tenant/config/some.key", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ el middleware simulado no setea el claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestGetConfig_InvalidTenantID(t *testing.T) {
@@ -169,7 +184,8 @@ func TestSetConfig_MissingTenantHeader(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestSetConfig_InvalidBody(t *testing.T) {
@@ -246,5 +262,6 @@ func TestBootstrapConfig_MissingTenantHeader(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/tenant/bootstrap", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

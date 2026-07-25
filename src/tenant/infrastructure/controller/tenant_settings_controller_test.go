@@ -51,6 +51,7 @@ func setupSettingsController(repo *mockSettingsRepo, pub *mockEventPub) (*Tenant
 	ctrl := NewTenantSettingsController(getQ, updateCmd)
 
 	r := gin.New()
+	r.Use(injectTenantClaim())
 	v1 := r.Group("/api/v1")
 	ctrl.RegisterRoutes(v1)
 	return ctrl, r
@@ -118,7 +119,8 @@ func TestGetSettings_MissingTenantHeader(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/tenant/settings", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestGetSettings_DBError(t *testing.T) {
@@ -175,7 +177,8 @@ func TestUpdateSettings_MissingTenantHeader(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestUpdateSettings_InvalidBody(t *testing.T) {

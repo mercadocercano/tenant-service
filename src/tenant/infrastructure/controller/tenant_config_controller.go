@@ -53,11 +53,13 @@ func (c *TenantConfigController) RegisterRoutes(router *gin.RouterGroup) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/tenant/config/{key} [get]
 func (c *TenantConfigController) GetConfig(ctx *gin.Context) {
-	// Obtener tenant ID del header
-	tenantIDStr := ctx.GetHeader("X-Tenant-ID")
+	// tenant_id SIEMPRE del claim JWT que valida tenantmw.TenantValidation (PLAT-E29 T6, patrón
+	// E27 customer_handler.go) — nunca del header X-Tenant-ID crudo. Fail-closed: 401 si el claim
+	// no está en el contexto (la RLS de las tablas sin app.tenant_id rechaza igual). Config L4.
+	tenantIDStr := ctx.GetString("tenant_id")
 	if tenantIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "X-Tenant-ID header is required",
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "tenant_id missing from request context",
 		})
 		return
 	}
@@ -112,11 +114,13 @@ func (c *TenantConfigController) GetConfig(ctx *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/tenant/config [post]
 func (c *TenantConfigController) SetConfig(ctx *gin.Context) {
-	// Obtener tenant ID del header
-	tenantIDStr := ctx.GetHeader("X-Tenant-ID")
+	// tenant_id SIEMPRE del claim JWT que valida tenantmw.TenantValidation (PLAT-E29 T6, patrón
+	// E27 customer_handler.go) — nunca del header X-Tenant-ID crudo. Fail-closed: 401 si el claim
+	// no está en el contexto (la RLS de las tablas sin app.tenant_id rechaza igual). Config L4.
+	tenantIDStr := ctx.GetString("tenant_id")
 	if tenantIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "X-Tenant-ID header is required",
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "tenant_id missing from request context",
 		})
 		return
 	}
@@ -174,17 +178,19 @@ func (c *TenantConfigController) SetConfig(ctx *gin.Context) {
 func (c *TenantConfigController) BootstrapConfig(ctx *gin.Context) {
 	log.Printf("=== BOOTSTRAP ENDPOINT START ===")
 
-	// Obtener tenant ID del header
-	tenantIDStr := ctx.GetHeader("X-Tenant-ID")
+	// tenant_id SIEMPRE del claim JWT que valida tenantmw.TenantValidation (PLAT-E29 T6, patrón
+	// E27 customer_handler.go) — nunca del header X-Tenant-ID crudo. Fail-closed: 401 si el claim
+	// no está en el contexto (la RLS de las tablas sin app.tenant_id rechaza igual). Config L4.
+	tenantIDStr := ctx.GetString("tenant_id")
 	if tenantIDStr == "" {
-		log.Printf("ERROR: X-Tenant-ID header is missing")
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "X-Tenant-ID header is required",
+		log.Printf("ERROR: tenant_id missing from request context")
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "tenant_id missing from request context",
 		})
 		return
 	}
 
-	log.Printf("TenantID from header: %s", tenantIDStr)
+	log.Printf("TenantID from claim: %s", tenantIDStr)
 
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {

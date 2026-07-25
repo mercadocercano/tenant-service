@@ -41,14 +41,6 @@ func (m *MockPointOfSaleRepository) Create(ctx context.Context, pos *entity.Poin
 	return args.Error(0)
 }
 
-func (m *MockPointOfSaleRepository) GetByID(ctx context.Context, id uuid.UUID) (*entity.PointOfSale, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.PointOfSale), args.Error(1)
-}
-
 func (m *MockPointOfSaleRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID) ([]*entity.PointOfSale, error) {
 	args := m.Called(ctx, tenantID)
 	if args.Get(0) == nil {
@@ -63,11 +55,6 @@ func (m *MockPointOfSaleRepository) ListActiveByTenant(ctx context.Context, tena
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*entity.PointOfSale), args.Error(1)
-}
-
-func (m *MockPointOfSaleRepository) Update(ctx context.Context, pos *entity.PointOfSale) error {
-	args := m.Called(ctx, pos)
-	return args.Error(0)
 }
 
 // MockEventPublisher es un mock del publicador de eventos

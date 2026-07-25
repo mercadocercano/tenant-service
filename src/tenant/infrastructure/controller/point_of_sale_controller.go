@@ -48,11 +48,13 @@ func (c *PointOfSaleController) RegisterRoutes(router *gin.RouterGroup) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/tenant/points-of-sale [post]
 func (c *PointOfSaleController) CreatePointOfSale(ctx *gin.Context) {
-	// Obtener tenant ID del header
-	tenantIDStr := ctx.GetHeader("X-Tenant-ID")
+	// tenant_id SIEMPRE del claim JWT que valida tenantmw.TenantValidation (PLAT-E29 T6, patrón
+	// E27 customer_handler.go) — nunca del header X-Tenant-ID crudo. Fail-closed: 401 si el claim
+	// no está en el contexto (la RLS de las tablas sin app.tenant_id rechaza igual). Config L4.
+	tenantIDStr := ctx.GetString("tenant_id")
 	if tenantIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "X-Tenant-ID header is required",
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "tenant_id missing from request context",
 		})
 		return
 	}
@@ -117,11 +119,13 @@ func (c *PointOfSaleController) CreatePointOfSale(ctx *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/tenant/points-of-sale [get]
 func (c *PointOfSaleController) ListPointsOfSale(ctx *gin.Context) {
-	// Obtener tenant ID del header
-	tenantIDStr := ctx.GetHeader("X-Tenant-ID")
+	// tenant_id SIEMPRE del claim JWT que valida tenantmw.TenantValidation (PLAT-E29 T6, patrón
+	// E27 customer_handler.go) — nunca del header X-Tenant-ID crudo. Fail-closed: 401 si el claim
+	// no está en el contexto (la RLS de las tablas sin app.tenant_id rechaza igual). Config L4.
+	tenantIDStr := ctx.GetString("tenant_id")
 	if tenantIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "X-Tenant-ID header is required",
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "tenant_id missing from request context",
 		})
 		return
 	}

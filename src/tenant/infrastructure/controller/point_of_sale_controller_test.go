@@ -57,6 +57,7 @@ func setupPOSController(repo *mockPOSRepo, pub *mockEventPub) (*PointOfSaleContr
 	ctrl := NewPointOfSaleController(createCmd, listQ)
 
 	r := gin.New()
+	r.Use(injectTenantClaim())
 	v1 := r.Group("/api/v1")
 	ctrl.RegisterRoutes(v1)
 	return ctrl, r
@@ -99,7 +100,8 @@ func TestCreatePointOfSale_MissingTenantHeader(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestCreatePointOfSale_InvalidBody(t *testing.T) {
@@ -201,7 +203,8 @@ func TestListPointsOfSale_MissingTenantHeader(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/v1/tenant/points-of-sale", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Sin header ⇒ sin claim ⇒ fail-closed 401 (PLAT-E29 T6)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestListPointsOfSale_RepositoryError(t *testing.T) {

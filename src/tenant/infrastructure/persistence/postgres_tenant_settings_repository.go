@@ -9,10 +9,19 @@ import (
 	"tenant/src/tenant/domain/repository"
 
 	"github.com/google/uuid"
+	"github.com/hornosg/go-shared/infrastructure/postgres"
 	"github.com/lib/pq"
 )
 
-// PostgresTenantSettingsRepository implementa el repositorio usando PostgreSQL
+// PostgresTenantSettingsRepository implementa el repositorio usando PostgreSQL.
+//
+// RLS (E29, RULE-09/RULE-10): `tenant_settings` tiene ROW LEVEL SECURITY forzado con la
+// policy `tenant_isolation` (migración 005). Cada operación corre dentro de
+// postgres.WithRLSInTransaction, que fija `app.tenant_id` con SET LOCAL — sin él, cualquier
+// query erra (fail-closed) bajo el rol NOBYPASSRLS `tenant_app`. El filtro manual
+// `WHERE tenant_id = $` se mantiene como defensa en profundidad. Save() envuelve el flujo
+// completo update-then-insert (+ optimistic locking) en UNA sola transacción RLS: el intento
+// de INSERT/UPDATE y la resolución de conflicto comparten el mismo `app.tenant_id`.
 type PostgresTenantSettingsRepository struct {
 	db *sql.DB
 }
@@ -22,10 +31,10 @@ func NewPostgresTenantSettingsRepository(db *sql.DB) repository.TenantSettingsRe
 	return &PostgresTenantSettingsRepository{db: db}
 }
 
-// GetByTenantID obtiene la configuración de un tenant
+// GetByTenantID obtiene la configuración de un tenant. Tenant: tenantID param.
 func (r *PostgresTenantSettingsRepository) GetByTenantID(ctx context.Context, tenantID uuid.UUID) (*entity.TenantSettings, error) {
 	query := `
-		SELECT 
+		SELECT
 			tenant_id,
 			base_currency,
 			allowed_currencies,
@@ -52,33 +61,36 @@ func (r *PostgresTenantSettingsRepository) GetByTenantID(ctx context.Context, te
 		WHERE tenant_id = $1
 	`
 
+	rc := postgres.RLSContext{TenantID: tenantID.String()}
 	var settings entity.TenantSettings
 	var allowedCurrenciesJSON []byte
 
-	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(
-		&settings.TenantID,
-		&settings.BaseCurrency,
-		&allowedCurrenciesJSON,
-		&settings.ExchangeRateSource,
-		&settings.AutoUpdateExchangeRate,
-		&settings.FiscalMode,
-		&settings.InvoiceGeneration,
-		&settings.AllowSaleIfAfipFails,
-		&settings.AutoRetryFailedInvoices,
-		&settings.EmailInvoiceAfterSuccess,
-		&settings.DefaultInvoiceType,
-		&settings.TaxRegime,
-		&settings.StockPolicy,
-		&settings.AllowNegativeStock,
-		&settings.RequireStockValidationBeforeSale,
-		&settings.CreditEnabled,
-		&settings.DefaultCreditDays,
-		&settings.MaxCreditLimit,
-		&settings.AllowSaleOverCreditLimit,
-		&settings.CashCustomerID,
-		&settings.Version,
-		&settings.UpdatedAt,
-	)
+	err := postgres.WithRLSInTransaction(ctx, r.db, rc, func(ctx context.Context, tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx, query, tenantID).Scan(
+			&settings.TenantID,
+			&settings.BaseCurrency,
+			&allowedCurrenciesJSON,
+			&settings.ExchangeRateSource,
+			&settings.AutoUpdateExchangeRate,
+			&settings.FiscalMode,
+			&settings.InvoiceGeneration,
+			&settings.AllowSaleIfAfipFails,
+			&settings.AutoRetryFailedInvoices,
+			&settings.EmailInvoiceAfterSuccess,
+			&settings.DefaultInvoiceType,
+			&settings.TaxRegime,
+			&settings.StockPolicy,
+			&settings.AllowNegativeStock,
+			&settings.RequireStockValidationBeforeSale,
+			&settings.CreditEnabled,
+			&settings.DefaultCreditDays,
+			&settings.MaxCreditLimit,
+			&settings.AllowSaleOverCreditLimit,
+			&settings.CashCustomerID,
+			&settings.Version,
+			&settings.UpdatedAt,
+		)
+	})
 
 	if err == sql.ErrNoRows {
 		return nil, errors.New("tenant settings not found")
@@ -96,7 +108,9 @@ func (r *PostgresTenantSettingsRepository) GetByTenantID(ctx context.Context, te
 	return &settings, nil
 }
 
-// Save guarda o actualiza la configuración con optimistic locking
+// Save guarda o actualiza la configuración con optimistic locking. Tenant: settings.TenantID
+// (path del WITH CHECK). Todo el flujo update-then-insert corre en una única transacción RLS
+// — el UPDATE, la resolución de conflicto y el INSERT comparten el mismo `app.tenant_id`.
 func (r *PostgresTenantSettingsRepository) Save(ctx context.Context, settings *entity.TenantSettings) error {
 	// Serializar allowed_currencies a JSON
 	allowedCurrenciesJSON, err := json.Marshal(settings.AllowedCurrencies)
@@ -104,99 +118,105 @@ func (r *PostgresTenantSettingsRepository) Save(ctx context.Context, settings *e
 		return err
 	}
 
-	// Intentar UPDATE primero (si existe)
-	updateQuery := `
-		UPDATE tenant_settings
-		SET 
-			base_currency = $2,
-			allowed_currencies = $3,
-			exchange_rate_source = $4,
-			auto_update_exchange_rate = $5,
-			fiscal_mode = $6,
-			invoice_generation = $7,
-			allow_sale_if_afip_fails = $8,
-			auto_retry_failed_invoices = $9,
-			email_invoice_after_success = $10,
-			default_invoice_type = $11,
-			tax_regime = $12,
-			stock_policy = $13,
-			allow_negative_stock = $14,
-			require_stock_validation_before_sale = $15,
-			credit_enabled = $16,
-			default_credit_days = $17,
-			max_credit_limit = $18,
-			allow_sale_over_credit_limit = $19,
-			cash_customer_id = $20,
-			version = $21,
-			updated_at = $22
-		WHERE tenant_id = $1 AND version = $23
-	`
+	rc := postgres.RLSContext{TenantID: settings.TenantID.String()}
+	return postgres.WithRLSInTransaction(ctx, r.db, rc, func(ctx context.Context, tx *sql.Tx) error {
+		// Intentar UPDATE primero (si existe)
+		updateQuery := `
+			UPDATE tenant_settings
+			SET
+				base_currency = $2,
+				allowed_currencies = $3,
+				exchange_rate_source = $4,
+				auto_update_exchange_rate = $5,
+				fiscal_mode = $6,
+				invoice_generation = $7,
+				allow_sale_if_afip_fails = $8,
+				auto_retry_failed_invoices = $9,
+				email_invoice_after_success = $10,
+				default_invoice_type = $11,
+				tax_regime = $12,
+				stock_policy = $13,
+				allow_negative_stock = $14,
+				require_stock_validation_before_sale = $15,
+				credit_enabled = $16,
+				default_credit_days = $17,
+				max_credit_limit = $18,
+				allow_sale_over_credit_limit = $19,
+				cash_customer_id = $20,
+				version = $21,
+				updated_at = $22
+			WHERE tenant_id = $1 AND version = $23
+		`
 
-	previousVersion := settings.Version - 1 // La versión que debe estar en DB
+		previousVersion := settings.Version - 1 // La versión que debe estar en DB
 
-	result, err := r.db.ExecContext(ctx, updateQuery,
-		settings.TenantID,
-		settings.BaseCurrency,
-		allowedCurrenciesJSON,
-		settings.ExchangeRateSource,
-		settings.AutoUpdateExchangeRate,
-		settings.FiscalMode,
-		settings.InvoiceGeneration,
-		settings.AllowSaleIfAfipFails,
-		settings.AutoRetryFailedInvoices,
-		settings.EmailInvoiceAfterSuccess,
-		settings.DefaultInvoiceType,
-		settings.TaxRegime,
-		settings.StockPolicy,
-		settings.AllowNegativeStock,
-		settings.RequireStockValidationBeforeSale,
-		settings.CreditEnabled,
-		settings.DefaultCreditDays,
-		settings.MaxCreditLimit,
-		settings.AllowSaleOverCreditLimit,
-		settings.CashCustomerID,
-		settings.Version,
-		settings.UpdatedAt,
-		previousVersion,
-	)
+		result, err := tx.ExecContext(ctx, updateQuery,
+			settings.TenantID,
+			settings.BaseCurrency,
+			allowedCurrenciesJSON,
+			settings.ExchangeRateSource,
+			settings.AutoUpdateExchangeRate,
+			settings.FiscalMode,
+			settings.InvoiceGeneration,
+			settings.AllowSaleIfAfipFails,
+			settings.AutoRetryFailedInvoices,
+			settings.EmailInvoiceAfterSuccess,
+			settings.DefaultInvoiceType,
+			settings.TaxRegime,
+			settings.StockPolicy,
+			settings.AllowNegativeStock,
+			settings.RequireStockValidationBeforeSale,
+			settings.CreditEnabled,
+			settings.DefaultCreditDays,
+			settings.MaxCreditLimit,
+			settings.AllowSaleOverCreditLimit,
+			settings.CashCustomerID,
+			settings.Version,
+			settings.UpdatedAt,
+			previousVersion,
+		)
 
-	if err != nil {
-		// Si es violación de clave primaria, intentar INSERT
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			return r.insert(ctx, settings, allowedCurrenciesJSON)
+		if err != nil {
+			// Si es violación de clave primaria, intentar INSERT
+			if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+				return r.insertTx(ctx, tx, settings, allowedCurrenciesJSON)
+			}
+			return err
 		}
-		return err
-	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	// Si no afectó filas, puede ser:
-	// 1. No existe (hacer INSERT)
-	// 2. Version conflict
-	if rowsAffected == 0 {
-		// Verificar si existe
-		exists, err := r.Exists(ctx, settings.TenantID)
+		rowsAffected, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 
-		if exists {
-			// Existe pero version no coincide
-			return errors.New("version conflict: settings were modified by another transaction")
+		// Si no afectó filas, puede ser:
+		// 1. No existe (hacer INSERT)
+		// 2. Version conflict
+		if rowsAffected == 0 {
+			// Verificar si existe (misma tx: no re-entrar por WithRLSInTransaction)
+			var exists bool
+			if err := tx.QueryRowContext(ctx,
+				`SELECT EXISTS(SELECT 1 FROM tenant_settings WHERE tenant_id = $1)`,
+				settings.TenantID,
+			).Scan(&exists); err != nil {
+				return err
+			}
+
+			if exists {
+				// Existe pero version no coincide
+				return errors.New("version conflict: settings were modified by another transaction")
+			}
+
+			// No existe, hacer INSERT
+			return r.insertTx(ctx, tx, settings, allowedCurrenciesJSON)
 		}
 
-		// No existe, hacer INSERT
-		return r.insert(ctx, settings, allowedCurrenciesJSON)
-	}
-
-	return nil
+		return nil
+	})
 }
 
-// insert realiza la inserción inicial
-func (r *PostgresTenantSettingsRepository) insert(ctx context.Context, settings *entity.TenantSettings, allowedCurrenciesJSON []byte) error {
+// insertTx realiza la inserción inicial dentro de la transacción RLS abierta por Save.
+func (r *PostgresTenantSettingsRepository) insertTx(ctx context.Context, tx *sql.Tx, settings *entity.TenantSettings, allowedCurrenciesJSON []byte) error {
 	insertQuery := `
 		INSERT INTO tenant_settings (
 			tenant_id,
@@ -228,7 +248,7 @@ func (r *PostgresTenantSettingsRepository) insert(ctx context.Context, settings 
 		)
 	`
 
-	_, err := r.db.ExecContext(ctx, insertQuery,
+	_, err := tx.ExecContext(ctx, insertQuery,
 		settings.TenantID,
 		settings.BaseCurrency,
 		allowedCurrenciesJSON,
@@ -256,12 +276,15 @@ func (r *PostgresTenantSettingsRepository) insert(ctx context.Context, settings 
 	return err
 }
 
-// Exists verifica si existe configuración para un tenant
+// Exists verifica si existe configuración para un tenant. Tenant: tenantID param.
 func (r *PostgresTenantSettingsRepository) Exists(ctx context.Context, tenantID uuid.UUID) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM tenant_settings WHERE tenant_id = $1)`
 
+	rc := postgres.RLSContext{TenantID: tenantID.String()}
 	var exists bool
-	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(&exists)
+	err := postgres.WithRLSInTransaction(ctx, r.db, rc, func(ctx context.Context, tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx, query, tenantID).Scan(&exists)
+	})
 	if err != nil {
 		return false, err
 	}

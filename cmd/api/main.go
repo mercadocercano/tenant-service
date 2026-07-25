@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -64,11 +65,20 @@ func main() {
 	corsCfg := localConfig.DefaultCORSConfig()
 	localConfig.SetupCORSMiddleware(router, corsCfg)
 
-	// Obtener configuración de la base de datos de variables de entorno
+	// Obtener configuración de la base de datos de variables de entorno.
+	// Sin default inseguro (PLAT-E29 T7, C1 CRÍTICO @dev-security): el viejo default "postgres" es
+	// superuser → BYPASSRLS. Con él, el servicio arrancaba SIN error con la RLS de
+	// tenant_config/tenant_settings/points_of_sale "activa" pero nunca ejercida, sirviendo config
+	// fiscal/monetaria/crédito cross-tenant. DB_USER es obligatorio y debe ser un rol NOBYPASSRLS
+	// (tenant_app). El chequeo de rol vivo se hace en assertNoRLSBypass.
 	dbHost := env.Get("DB_HOST", "localhost")
 	dbPort := env.Get("DB_PORT", "5432")
-	dbUser := env.Get("DB_USER", "postgres")
-	dbPassword := env.Get("DB_PASSWORD", "postgres")
+	dbUser := env.Get("DB_USER", "")
+	if dbUser == "" {
+		log.Fatalf("DB_USER is required and must be a NOBYPASSRLS application role " +
+			"(e.g. tenant_app), never postgres — RULE-09/RULE-10, PLAT-E29 C1")
+	}
+	dbPassword := env.Get("DB_PASSWORD", "")
 	dbName := env.Get("DB_NAME", "tenant_db")
 
 	log.Printf("Intentando conectar a postgres://%s:***@%s:%s/%s", dbUser, dbHost, dbPort, dbName)
@@ -88,6 +98,14 @@ func main() {
 	defer db.Close()
 	log.Println("Conexión a la base de datos establecida con éxito")
 
+	// Fail-fast anti-superuser (PLAT-E29 T7, C1 CRÍTICO @dev-security, patrón E27/E28): el runtime
+	// NUNCA debe correr como superuser/BYPASSRLS. FORCE ROW LEVEL SECURITY no aplica a superusers →
+	// con un rol privilegiado la RLS de tenant_config/tenant_settings/points_of_sale queda "activa"
+	// pero nunca ejercida, sirviendo config fiscal/monetaria/crédito cross-tenant sin error visible.
+	if err := assertNoRLSBypass(db); err != nil {
+		log.Fatalf("%v", err)
+	}
+
 	postgres.StartPoolMonitor(context.Background(), db, postgres.MonitorOptions{Service: "tenant-service", DBName: dbName})
 
 	// Migraciones versionadas in-app (ADR-001) — fail-fast antes de servir tráfico.
@@ -95,11 +113,19 @@ func main() {
 		log.Fatalf("Error running migrations: %v", err)
 	}
 
-	// Conectar a la base de datos del eventbus
+	// Conectar a la base de datos del eventbus.
+	// C1 también en la segunda conexión (PLAT-E29 T7, @dev-security: assertNoRLSBypass innegociable
+	// en AMBAS conexiones): EVENTBUS_DB_USER obligatorio, sin default "postgres". tenant-service SOLO
+	// PUBLICA en event_bus (INSERT), y aunque event_bus no tiene RLS propia, correr como superuser al
+	// eventbus permitiría leer/pisar eventos ajenos en la tabla compartida — se cierra por defensa.
 	eventBusHost := env.Get("EVENTBUS_DB_HOST", "localhost")
 	eventBusPort := env.Get("EVENTBUS_DB_PORT", "5432")
-	eventBusUser := env.Get("EVENTBUS_DB_USER", "postgres")
-	eventBusPassword := env.Get("EVENTBUS_DB_PASSWORD", "postgres")
+	eventBusUser := env.Get("EVENTBUS_DB_USER", "")
+	if eventBusUser == "" {
+		log.Fatalf("EVENTBUS_DB_USER is required and must be a NOBYPASSRLS application role " +
+			"(e.g. tenant_app), never postgres — RULE-09/RULE-10, PLAT-E29 C1")
+	}
+	eventBusPassword := env.Get("EVENTBUS_DB_PASSWORD", "")
 	eventBusName := env.Get("EVENTBUS_DB_NAME", "eventbus")
 
 	log.Printf("Conectando a EventBus en postgres://%s:***@%s:%s/%s", eventBusUser, eventBusHost, eventBusPort, eventBusName)
@@ -117,6 +143,10 @@ func main() {
 	}
 	defer eventBusDB.Close()
 	log.Println("Conexión al eventbus establecida con éxito")
+
+	if err := assertNoRLSBypass(eventBusDB); err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	postgres.StartPoolMonitor(context.Background(), eventBusDB, postgres.MonitorOptions{Service: "tenant-service", DBName: eventBusName})
 
@@ -178,4 +208,35 @@ func setupTenantModule(router *gin.RouterGroup, db *sql.DB, eventPublisher *even
 	log.Println("  [Points of Sale]")
 	log.Println("  POST   /api/v1/tenant/points-of-sale")
 	log.Println("  GET    /api/v1/tenant/points-of-sale")
+}
+
+// assertNoRLSBypass aborta el arranque si el rol de base de datos con el que conectamos es
+// superuser o tiene el atributo BYPASSRLS (PLAT-E29 T7, C1 CRÍTICO @dev-security). Con un rol
+// así, FORCE ROW LEVEL SECURITY no se aplica y la RLS de tenant_config, tenant_settings y
+// points_of_sale (config fiscal AFIP, monedas/tipo de cambio, límites de crédito y puntos de
+// venta fiscales por tenant) queda inerte: el servicio serviría datos cross-tenant sin ningún
+// error visible. Convierte ese fail-OPEN silencioso en un fail-CLOSED ruidoso. Se corre en AMBAS
+// conexiones (tenant_db y eventbus) por indicación @dev-security. ALLOW_SUPERUSER_DB=true es un
+// escape hatch explícito para tareas admin locales — jamás debe usarse en producción.
+func assertNoRLSBypass(db *sql.DB) error {
+	if env.Get("ALLOW_SUPERUSER_DB", "false") == "true" {
+		log.Println("⚠️  ALLOW_SUPERUSER_DB=true — se omite el chequeo NOBYPASSRLS (solo admin/local, NUNCA prod)")
+		return nil
+	}
+
+	var privileged bool
+	if err := db.QueryRow(
+		`SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`,
+	).Scan(&privileged); err != nil {
+		return fmt.Errorf("no se pudo verificar los privilegios del rol de DB (current_user): %w", err)
+	}
+	if privileged {
+		return fmt.Errorf("negativa a arrancar: el rol de DB actual es SUPERUSER o BYPASSRLS y " +
+			"eludiría la row-level security de tenant_config/tenant_settings/points_of_sale (config " +
+			"fiscal/monetaria/crédito por tenant — RULE-09/RULE-10, PLAT-E29 C1). Usá un rol " +
+			"NOBYPASSRLS como tenant_app, o exportá ALLOW_SUPERUSER_DB=true solo para tareas admin locales")
+	}
+
+	log.Println("RLS guard OK: el rol de DB es NOBYPASSRLS (tenant_config, tenant_settings y points_of_sale protegidas por FORCE ROW LEVEL SECURITY)")
+	return nil
 }
