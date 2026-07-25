@@ -2,7 +2,7 @@
 
 ## Ruta registrada
 
-El tenant-service está registrado en Kong con la siguiente configuración (ver `~/Projects/infra/kong/kong.yml`):
+El tenant-service está registrado en Kong con la siguiente configuración (ver `~/Projects/infra/api-gateway/kong.yml.template`):
 
 ```
 URL base: http://mc-tenant-service:8120
@@ -57,9 +57,10 @@ func GetTenantConfig(ctx context.Context, tenantID, key string) (*string, error)
 
 ## Aplicar cambios en Kong
 
-Después de editar `~/Projects/infra/kong/kong.yml`:
+Después de editar `~/Projects/infra/api-gateway/kong.yml.template`, rebuild + recrear `lab-kong`
+(el template se copia a la imagen en el build, no está montado como volumen — un `restart` solo
+reusa la imagen vieja):
 
 ```bash
-curl -s -X POST http://localhost:8001/config \
-  -F "config=@$HOME/Projects/infra/kong/kong.yml" | jq '.services | length'
+docker compose -f ~/Projects/infra/docker-compose.yml up -d --build kong
 ```
