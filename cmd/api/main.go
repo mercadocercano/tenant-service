@@ -33,14 +33,7 @@ func main() {
 	// Agregar middlewares básicos necesarios
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(tenantmw.TenantValidation(tenantmw.TenantValidationConfig{
-		JWTSecret: os.Getenv("JWT_SECRET"),
-		ExcludedRoutes: []string{
-			"/health",
-			"/metrics",
-		},
-		RejectMissingTenant: true, // cierre de bypass de tenant (rollout verificado 2026-06-19)
-	}))
+	router.Use(tenantmw.TenantValidation(tenantValidationConfig()))
 
 	// Configurar Prometheus metrics si está habilitado
 	prometheusEnabled := os.Getenv("PROMETHEUS_ENABLED")
@@ -239,4 +232,17 @@ func assertNoRLSBypass(db *sql.DB) error {
 
 	log.Println("RLS guard OK: el rol de DB es NOBYPASSRLS (tenant_config, tenant_settings y points_of_sale protegidas por FORCE ROW LEVEL SECURITY)")
 	return nil
+}
+
+// tenantValidationConfig es la config REAL del gate de tenant (montaje global; extraída de main
+// para que el test representativo de ACC-E03 T5b ejercite esta misma config, no una copia).
+func tenantValidationConfig() tenantmw.TenantValidationConfig {
+	return tenantmw.TenantValidationConfig{
+		JWTSecret: os.Getenv("JWT_SECRET"),
+		ExcludedRoutes: []string{
+			"/health",
+			"/metrics",
+		},
+		RejectMissingTenant: true, // cierre de bypass de tenant (rollout verificado 2026-06-19)
+	}
 }
